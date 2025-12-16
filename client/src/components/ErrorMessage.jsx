@@ -1,5 +1,19 @@
-export const ErrorMessage = ({ message = 'Something went wrong' }) => (
-  <div className="bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded-lg">
-    <p className="text-red-300 text-sm text-center">{message}</p>
+export const ErrorMessage = ({ message, onRetry }) => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
+    <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full shadow-xl">
+      <div className="text-center">
+        <div className="text-4xl mb-4">❌</div>
+        <h2 className="text-lg font-bold text-red-400 mb-2">Error</h2>
+        <p className="text-gray-400 text-sm mb-4">{message}</p>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-medium transition-colors"
+          >
+            Reintentar
+          </button>
+        )}
+      </div>
+    </div>
   </div>
 );
