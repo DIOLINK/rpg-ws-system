@@ -3,6 +3,12 @@ import { Character } from '../models/Character.js';
 export const setupGameSockets = (io) => {
   io.on('connection', (socket) => {
     console.log('🎮 Usuario conectado:', socket.id);
+    const isDM = async (socket, gameId) => {
+      const token = socket.handshake.auth.token;
+      const user = await verifyToken(token);
+      const game = await Game.findById(gameId);
+      return game.dmId.toString() === user.sub;
+    };
 
     // Unirse a una partida
     socket.on('join-game', async ({ gameId, userId }) => {
@@ -15,6 +21,10 @@ export const setupGameSockets = (io) => {
 
     // DM: Permitir/denegar edición
     socket.on('dm:toggle-edit', async ({ characterId, canEdit, gameId }) => {
+      if (!(await isDM(socket, gameId))) {
+        socket.emit('error', { message: 'No autorizado' });
+        return;
+      }
       const character = await Character.findById(characterId);
       if (!character) return;
 
@@ -32,6 +42,10 @@ export const setupGameSockets = (io) => {
 
     // DM: Añadir habilidad
     socket.on('dm:add-ability', async ({ characterId, ability, gameId }) => {
+      if (!(await isDM(socket, gameId))) {
+        socket.emit('error', { message: 'No autorizado' });
+        return;
+      }
       const character = await Character.findById(characterId);
       if (!character) return;
 
@@ -53,6 +67,10 @@ export const setupGameSockets = (io) => {
     socket.on(
       'dm:remove-ability',
       async ({ characterId, abilityId, gameId }) => {
+        if (!(await isDM(socket, gameId))) {
+          socket.emit('error', { message: 'No autorizado' });
+          return;
+        }
         const character = await Character.findById(characterId);
         if (!character) return;
 
@@ -122,6 +140,10 @@ export const setupGameSockets = (io) => {
 
     // DM: Eliminar estado
     socket.on('dm:remove-status', async ({ characterId, statusId, gameId }) => {
+      if (!(await isDM(socket, gameId))) {
+        socket.emit('error', { message: 'No autorizado' });
+        return;
+      }
       const character = await Character.findById(characterId);
       if (!character) return;
 
