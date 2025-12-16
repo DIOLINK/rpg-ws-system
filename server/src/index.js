@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
-import { connectDB } from './db.js';
+import { connectDB } from './config/db.js';
 import authRoutes from './routes/auth.js';
 import gameRoutes from './routes/game.js';
 import { setupGameSockets } from './socket/gameSocket.js';
@@ -43,7 +43,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date() });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
 });
