@@ -81,6 +81,9 @@ export const GameLobby = () => {
     );
   }
 
+  // Aseguramos que games sea un array antes de usar .map()
+  const safeGames = Array.isArray(games) ? games : [];
+
   return (
     <div className="min-h-screen bg-gray-900 p-3 sm:p-4 md:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto">
@@ -150,11 +153,11 @@ export const GameLobby = () => {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg sm:text-xl font-semibold">Mis Partidas</h2>
             <span className="text-xs sm:text-sm text-gray-400">
-              {games.length} partida{games.length !== 1 ? 's' : ''}
+              {safeGames.length} partida{safeGames.length !== 1 ? 's' : ''}
             </span>
           </div>
 
-          {games.length === 0 ? (
+          {safeGames.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-4xl mb-3">🎲</div>
               <p className="text-gray-500 text-sm sm:text-base">
@@ -166,7 +169,7 @@ export const GameLobby = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {games.map((game) => (
+              {safeGames.map((game) => (
                 <div
                   key={game._id}
                   className="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors cursor-pointer shadow-lg hover:shadow-xl"

@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { authService } from '../utils/authService';
 
 const AuthContext = createContext();
@@ -10,6 +11,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -20,6 +22,16 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      if (user) {
+        navigate('/lobby'); // Redirigir al lobby si el usuario está autenticado
+      } else {
+        navigate('/login'); // Redirigir al login si no está autenticado
+      }
+    }
+  }, [user, loading, navigate]);
 
   const fetchUser = async (token) => {
     try {
