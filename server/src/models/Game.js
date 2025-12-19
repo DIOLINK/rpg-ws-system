@@ -13,4 +13,26 @@ const gameSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+// Método estático para asignar un personaje a una partida
+gameSchema.statics.assignCharacterToGame = async function (
+  gameId,
+  characterId
+) {
+  const game = await this.findById(gameId);
+  if (!game) {
+    throw new Error('Partida no encontrada');
+  }
+
+  // Verificar si el personaje ya está asignado
+  if (
+    game.players.some((player) => player.characterId.toString() === characterId)
+  ) {
+    throw new Error('El personaje ya está asignado a esta partida');
+  }
+
+  game.players.push({ characterId });
+  await game.save();
+  return game;
+};
+
 export const Game = mongoose.model('Game', gameSchema);

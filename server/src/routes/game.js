@@ -135,4 +135,34 @@ router.delete('/characters/:id', async (req, res) => {
   }
 });
 
+// Ruta para asignar un personaje a una partida
+router.post('/games/:gameId/assign-character', async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    const { characterId } = req.body;
+
+    // Lógica para asignar el personaje a la partida
+    const game = await Game.findById(gameId);
+    if (!game) {
+      return res.status(404).json({ error: 'Partida no encontrada' });
+    }
+
+    // Verificar si el personaje ya está asignado
+    if (game.characters.includes(characterId)) {
+      return res
+        .status(400)
+        .json({ error: 'El personaje ya está asignado a esta partida' });
+    }
+
+    game.characters.push(characterId);
+    await game.save();
+
+    res.status(200).json({ message: 'Personaje asignado a la partida', game });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: 'Error al asignar el personaje a la partida' });
+  }
+});
+
 export default router;
