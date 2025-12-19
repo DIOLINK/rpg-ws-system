@@ -93,4 +93,46 @@ router.post('/make-dm/:userId', authenticateUser, async (req, res) => {
   }
 });
 
+// Ruta para crear un personaje
+router.post('/characters', async (req, res) => {
+  try {
+    const { name, classType, level } = req.body;
+    const newCharacter = await Character.create({ name, classType, level });
+    res.status(201).json(newCharacter);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al crear el personaje' });
+  }
+});
+
+// Ruta para modificar un personaje
+router.put('/characters/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    const updatedCharacter = await Character.findByIdAndUpdate(id, updates, {
+      new: true,
+    });
+    if (!updatedCharacter) {
+      return res.status(404).json({ error: 'Personaje no encontrado' });
+    }
+    res.json(updatedCharacter);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar el personaje' });
+  }
+});
+
+// Ruta para borrar un personaje
+router.delete('/characters/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedCharacter = await Character.findByIdAndDelete(id);
+    if (!deletedCharacter) {
+      return res.status(404).json({ error: 'Personaje no encontrado' });
+    }
+    res.json({ message: 'Personaje eliminado correctamente' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar el personaje' });
+  }
+});
+
 export default router;
