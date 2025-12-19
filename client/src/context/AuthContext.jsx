@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUser = async (token) => {
     try {
-      const response = await fetch('http://localhost:5000/api/auth/me', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -41,9 +41,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (googleToken) => {
-    const data = await authService.loginWithGoogle(googleToken);
-    setUser(data.user);
-    return data;
+    try {
+      const data = await authService.loginWithGoogle(googleToken);
+      setUser(data.user);
+      localStorage.setItem('token', data.token);
+      return data;
+    } catch (error) {
+      console.error('Error during login:', error);
+      throw error;
+    }
   };
 
   const logout = () => {
