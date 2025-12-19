@@ -8,6 +8,9 @@ export const signInWithGoogle = async () => {
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
     const token = await user.getIdToken();
+
+    // console.log('Token generado en el cliente:', token);
+
     return { user, token };
   } catch (error) {
     if (error.code === 'auth/popup-closed-by-user') {
@@ -20,7 +23,7 @@ export const signInWithGoogle = async () => {
 };
 
 const authService = {
-  loginWithGoogle: async (googleToken) => {
+  loginWithGoogle: async () => {
     try {
       const { _user, token } = await signInWithGoogle();
 
@@ -31,7 +34,6 @@ const authService = {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${googleToken}`,
           },
           body: JSON.stringify({ token }),
         }

@@ -1,6 +1,6 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import admin from '../config/firebaseAdmin.js';
+import admin from '../../config/firebaseAdmin.js';
 import { User } from '../models/User.js';
 
 const router = express.Router();
@@ -64,7 +64,10 @@ router.get('/me', async (req, res) => {
       isDM: user.isDM,
     });
   } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
+    console.error('Error during token validation:', error);
+    res
+      .status(500)
+      .json({ error: 'An unexpected error occurred during token validation.' });
   }
 });
 
