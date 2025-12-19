@@ -140,3 +140,4 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 client_secret_112301139704-rngar36j8lgpknueprd75qhjl2jldhqe.apps.googleusercontent.com.json
+client/src/services/google-services.json

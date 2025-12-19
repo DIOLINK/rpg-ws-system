@@ -1,23 +1,20 @@
-import { GoogleLogin } from '@react-oauth/google';
 import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { signInWithGoogle } from '../utils/authService';
 import { ErrorMessage } from './ErrorMessage';
 
 export const Login = () => {
-  const { login } = useAuth();
   const [error, setError] = useState(null);
 
-  const handleSuccess = async (credentialResponse) => {
+  const handleLogin = async () => {
     try {
-      await login(credentialResponse.credential);
+      const { user, token } = await signInWithGoogle();
+      console.log('User signed in:', user);
+      console.log('Token:', token);
+      // Aquí puedes manejar el token, como enviarlo al backend
     } catch (err) {
       console.error(err);
-      setError('Error al iniciar sesión');
+      setError('Error al iniciar sesión con Google');
     }
-  };
-
-  const handleError = () => {
-    setError('Error al iniciar sesión con Google');
   };
 
   return (
@@ -36,15 +33,12 @@ export const Login = () => {
 
         {/* Google Login */}
         <div className="flex justify-center">
-          <GoogleLogin
-            onSuccess={handleSuccess}
-            onError={handleError}
-            theme="filled_black"
-            size="large"
-            text="signin_with"
-            shape="rectangular"
-            className="w-full"
-          />
+          <button
+            onClick={handleLogin}
+            className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded"
+          >
+            Iniciar sesión con Google
+          </button>
         </div>
 
         {/* Error Message */}

@@ -21,6 +21,7 @@ const PrivateRoute = ({ children }) => {
 
 function AppRoutes() {
   const { user } = useAuth();
+  console.log('🚀 ~ AppRoutes ~ user:', user);
 
   return (
     <BrowserRouter>
