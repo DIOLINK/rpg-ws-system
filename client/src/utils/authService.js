@@ -10,7 +10,11 @@ export const signInWithGoogle = async () => {
     const token = await user.getIdToken();
     return { user, token };
   } catch (error) {
-    console.error('Error during Google sign-in:', error);
+    if (error.code === 'auth/popup-closed-by-user') {
+      console.error('El usuario canceló el inicio de sesión.');
+      throw new Error('Inicio de sesión cancelado por el usuario.');
+    }
+    console.error('Error durante el inicio de sesión con Google:', error);
     throw error;
   }
 };

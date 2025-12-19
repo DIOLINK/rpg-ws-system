@@ -13,7 +13,11 @@ export const Login = () => {
       // Aquí puedes manejar el token, como enviarlo al backend
     } catch (err) {
       console.error(err);
-      setError('Error al iniciar sesión con Google');
+      if (err.message === 'Inicio de sesión cancelado por el usuario.') {
+        setError('El inicio de sesión fue cancelado.');
+      } else {
+        setError('Error al iniciar sesión con Google');
+      }
     }
   };
 
