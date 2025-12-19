@@ -35,6 +35,7 @@ connectDB();
 // Rutas
 app.use('/api/auth', authRoutes);
 app.use('/api/game', gameRoutes);
+app.use('/api', gameRoutes); // Conectar las rutas de personajes
 
 // WebSockets
 setupGameSockets(io);
