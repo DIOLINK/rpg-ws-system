@@ -30,8 +30,24 @@ router.post('/google', async (req, res) => {
 
     const { uid, email, name, picture } = decodedToken;
 
-    // Aquí puedes buscar o crear el usuario en la base de datos
-    const user = { firebaseId: uid, email, name, picture }; // Ejemplo simplificado
+    // Buscar al usuario en la base de datos local
+    let user = await User.findOne({ firebaseId: uid });
+
+    // Si el usuario no existe, crearlo
+    if (!user) {
+      user = new User({
+        firebaseId: uid,
+        email,
+        name,
+        picture,
+        isDM: false, // Por defecto, no es Dungeon Master
+      });
+
+      await user.save();
+      console.log('Usuario creado en la base de datos local:', user);
+    } else {
+      console.log('Usuario ya existe en la base de datos local:', user);
+    }
 
     res.json({ message: 'Autenticación exitosa', user });
   } catch (error) {
