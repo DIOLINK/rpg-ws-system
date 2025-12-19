@@ -1,16 +1,17 @@
 import { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { signInWithGoogle } from '../utils/authService';
 import { ErrorMessage } from './ErrorMessage';
 
 export const Login = () => {
   const [error, setError] = useState(null);
+  const { login } = useAuth();
 
   const handleLogin = async () => {
     try {
       const { user, token } = await signInWithGoogle();
+      await login(token); // Actualizar el estado del usuario en el contexto
       console.log('User signed in:', user);
-      console.log('Token:', token);
-      // Aquí puedes manejar el token, como enviarlo al backend
     } catch (err) {
       console.error(err);
       if (err.message === 'Inicio de sesión cancelado por el usuario.') {

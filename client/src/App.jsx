@@ -24,39 +24,39 @@ function AppRoutes() {
   console.log('🚀 ~ AppRoutes ~ user:', user);
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route
-          path="/login"
-          element={user ? <Navigate to="/lobby" /> : <Login />}
-        />
-        <Route
-          path="/lobby"
-          element={
-            <PrivateRoute>
-              <GameLobby />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/game/:gameId"
-          element={
-            <PrivateRoute>
-              <GamePage />
-            </PrivateRoute>
-          }
-        />
-        <Route path="/" element={<Navigate to="/lobby" />} />
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      <Route
+        path="/login"
+        element={user ? <Navigate to="/lobby" /> : <Login />}
+      />
+      <Route
+        path="/lobby"
+        element={
+          <PrivateRoute>
+            <GameLobby />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/game/:gameId"
+        element={
+          <PrivateRoute>
+            <GamePage />
+          </PrivateRoute>
+        }
+      />
+      <Route path="/" element={<Navigate to="/lobby" />} />
+    </Routes>
   );
 }
 
 function App() {
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
