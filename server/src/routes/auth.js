@@ -1,10 +1,9 @@
 import express from 'express';
-import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
+import admin from '../config/firebaseAdmin';
 import { User } from '../models/User.js';
 
 const router = express.Router();
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Ruta de ejemplo para autenticación
 router.post('/login', (req, res) => {
@@ -22,21 +21,21 @@ router.post('/login', (req, res) => {
 router.post('/google', async (req, res) => {
   const { token } = req.body;
 
-  try {
-    const ticket = await client.verifyIdToken({
-      idToken: token,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
+  console.log('Token recibido del cliente:', token);
 
-    const payload = ticket.getPayload();
-    const { sub, email, name, picture } = payload;
+  try {
+    // Verificar el token con Firebase Admin
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    console.log('Token decodificado:', decodedToken);
+
+    const { uid, email, name, picture } = decodedToken;
 
     // Aquí puedes buscar o crear el usuario en la base de datos
-    const user = { googleId: sub, email, name, picture }; // Ejemplo simplificado
+    const user = { firebaseId: uid, email, name, picture }; // Ejemplo simplificado
 
     res.json({ message: 'Autenticación exitosa', user });
   } catch (error) {
-    console.error('Error verificando token de Google:', error);
+    console.error('Error verificando token de Firebase:', error);
     res.status(401).json({ message: 'Token inválido' });
   }
 });

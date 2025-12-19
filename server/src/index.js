@@ -1,5 +1,4 @@
 import cors from 'cors';
-import dotenv from 'dotenv';
 import express from 'express';
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
@@ -8,7 +7,9 @@ import authRoutes from './routes/auth.js';
 import gameRoutes from './routes/game.js';
 import { setupGameSockets } from './socket/gameSocket.js';
 
-dotenv.config();
+// Configurar dotenv para cargar el archivo .env desde la ubicación correcta
+import dotenv from 'dotenv';
+dotenv.config({ path: './src/.env' });
 
 const app = express();
 const server = createServer(app);
@@ -47,3 +48,6 @@ const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
 });
+
+// Verificar si FRONTEND_URL está definido
+console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
