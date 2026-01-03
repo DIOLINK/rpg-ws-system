@@ -8,6 +8,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
+    hmr: {
+      overlay: false, // Desactiva la superposición de errores
+    },
   },
   build: {
     sourcemap: false, // Deshabilitar mapas de origen en producción
