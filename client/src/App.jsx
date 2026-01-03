@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import './App.css';
 import { Login } from './components/Login';
+import NavBar from './components/NavBar';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { GameLobby } from './pages/GameLobby';
 import { GamePage } from './pages/GamePage';
@@ -54,7 +55,10 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <div className="App">
+          <NavBar />
+          <AppRoutes />
+        </div>
       </AuthProvider>
     </BrowserRouter>
   );
