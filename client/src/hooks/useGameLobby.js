@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const BASE_URL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export const useGameLobby = (user) => {
   const navigate = useNavigate();
@@ -14,7 +14,7 @@ export const useGameLobby = (user) => {
     const fetchGames = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${BASE_URL}/game/my-games`, {
+        const response = await fetch(`${API_BASE_URL}/game/my-games`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json();
@@ -34,7 +34,7 @@ export const useGameLobby = (user) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${BASE_URL}/game/create`, {
+      const response = await fetch(`${API_BASE_URL}/game/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -55,7 +55,7 @@ export const useGameLobby = (user) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${BASE_URL}/game/join/${joinCode}`, {
+      const response = await fetch(`${API_BASE_URL}/game/join/${joinCode}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

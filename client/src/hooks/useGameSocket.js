@@ -9,9 +9,10 @@ export const useGameSocket = (gameId) => {
   const [game, setGame] = useState(null);
 
   useEffect(() => {
+    const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:5001';
     if (!gameId) return;
 
-    socket.current = io('http://localhost:5000', {
+    socket.current = io(`${BASE_URL}`, {
       auth: {
         token: authService.getToken(),
       },
