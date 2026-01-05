@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../utils/authService';
 
@@ -69,13 +70,21 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  const value = {
-    user,
-    login,
-    logout,
-    loading,
-    isDM: user?.isDM || false,
-  };
+  const value = useMemo(
+    () => ({
+      user,
+      login,
+      logout,
+      loading,
+      isDM: user?.isDM || false,
+    }),
+    [user, loading]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+
+AuthProvider.propTypes = {
+  children: PropTypes.node.isRequired,
+};
+

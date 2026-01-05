@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import './App.css';
 import { Login } from './components/Login';
@@ -5,6 +6,7 @@ import NavBar from './components/NavBar';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { GameLobby } from './pages/GameLobby';
 import { GamePage } from './pages/GamePage';
+import { Profile } from './pages/Profile';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -18,6 +20,10 @@ const PrivateRoute = ({ children }) => {
   }
 
   return user ? children : <Navigate to="/login" />;
+};
+
+PrivateRoute.propTypes = {
+  children: PropTypes.node.isRequired,
 };
 
 function AppRoutes() {
@@ -43,6 +49,14 @@ function AppRoutes() {
         element={
           <PrivateRoute>
             <GamePage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <PrivateRoute>
+            <Profile />
           </PrivateRoute>
         }
       />
