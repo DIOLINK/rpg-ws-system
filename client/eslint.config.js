@@ -1,8 +1,9 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import { defineConfig, globalIgnores } from 'eslint/config'
+import js from '@eslint/js';
+import jest from 'eslint-plugin-jest';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
+import { defineConfig, globalIgnores } from 'eslint/config';
+import globals from 'globals';
 
 export default defineConfig([
   globalIgnores(['dist']),
@@ -24,6 +25,21 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'react/jsx-uses-react': 'error', // Asegurar que React no sea eliminado
+      'react/react-in-jsx-scope': 'off',
     },
   },
-])
+  {
+    files: ['**/*.{test,spec}.{js,jsx}'],
+    plugins: { jest },
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.jest, // Agregar soporte para Jest
+      },
+    },
+    rules: {
+      ...jest.configs.recommended.rules, // Usar las reglas recomendadas de Jest
+    },
+  },
+]);

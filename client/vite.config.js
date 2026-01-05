@@ -25,4 +25,9 @@ export default defineConfig({
       '@': resolve(dirname(fileURLToPath(import.meta.url)), 'src'),
     },
   },
+  test: {
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.js', // opcional, para configuraciones globales
+    globals: true,
+  },
 });

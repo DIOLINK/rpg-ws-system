@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../utils/authService';
 
@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }) => {
         navigate('/login'); // Redirigir al login si no está autenticado
       }
     }
-  }, [user, loading, navigate]);
+  }, [user]);
 
   const fetchUser = async (token) => {
     try {
@@ -87,4 +87,3 @@ export const AuthProvider = ({ children }) => {
 AuthProvider.propTypes = {
   children: PropTypes.node.isRequired,
 };
-
