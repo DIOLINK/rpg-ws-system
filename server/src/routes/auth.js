@@ -1,5 +1,4 @@
 import express from 'express';
-import jwt from 'jsonwebtoken';
 import admin from '../../config/firebaseAdmin.js';
 import { User } from '../models/User.js';
 
@@ -28,15 +27,19 @@ router.post('/google', async (req, res) => {
     const decodedToken = await admin.auth().verifyIdToken(token);
     console.log('Token decodificado:', decodedToken);
 
-    const { uid, email, name, picture } = decodedToken;
+    const googleId =
+      decodedToken.uid || decodedToken.sub || decodedToken.user_id;
+    const email = decodedToken.email;
+    const name = decodedToken.name;
+    const picture = decodedToken.picture;
 
-    // Buscar al usuario en la base de datos local
-    let user = await User.findOne({ firebaseId: uid });
+    // Buscar al usuario en la base de datos local usando googleId
+    let user = await User.findOne({ googleId });
 
     // Si el usuario no existe, crearlo
     if (!user) {
       user = new User({
-        firebaseId: uid,
+        googleId,
         email,
         name,
         picture,
@@ -66,8 +69,11 @@ router.get('/me', async (req, res) => {
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id);
+    // Validar el token con Firebase Admin
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    const googleId =
+      decodedToken.uid || decodedToken.sub || decodedToken.user_id;
+    const user = await User.findOne({ googleId });
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });

@@ -75,6 +75,16 @@ const characterSchema = new mongoose.Schema(
       type: Number,
       default: 1,
     },
+
+    // Validación por el DM
+    validated: {
+      type: Boolean,
+      default: false,
+    },
+    validationComment: {
+      type: String,
+      default: '',
+    },
   },
   { timestamps: true }
 );

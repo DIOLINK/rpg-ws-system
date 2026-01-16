@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { Server } from 'socket.io';
 import { connectDB } from './config/db.js';
 import authRoutes from './routes/auth.js';
+import characterRoutes from './routes/character.js';
 import gameRoutes from './routes/game.js';
 import { setupGameSockets } from './socket/gameSocket.js';
 
@@ -35,6 +36,7 @@ connectDB();
 // Rutas
 app.use('/api/auth', authRoutes);
 app.use('/api/game', gameRoutes);
+app.use('/api/characters', characterRoutes);
 
 // WebSockets
 setupGameSockets(io);

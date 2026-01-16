@@ -23,11 +23,14 @@ export const authenticateUser = async (req, res, next) => {
     }
 
     const payload = await verifyToken(token);
-    let user = await User.findOne({ googleId: payload.sub });
+
+    // Buscar el identificador más robusto posible
+    const googleId = payload.sub || payload.user_id || payload.uid;
+    let user = await User.findOne({ googleId });
 
     if (!user) {
       user = await User.create({
-        googleId: payload.sub,
+        googleId,
         email: payload.email,
         name: payload.name,
         picture: payload.picture,
