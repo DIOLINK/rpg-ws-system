@@ -5,6 +5,7 @@ import { useGameLobby } from '../hooks/useGameLobby';
 export const MAX_GAMES_DISPLAYED = -6;
 
 import { useState } from 'react';
+import { InputClearable } from '../components/InputClearable';
 
 export function CopyButton({ id }) {
   const [copied, setCopied] = useState(false);
@@ -42,6 +43,9 @@ export const GameLobby = () => {
     loading,
     createGame,
     joinGame,
+    games: allGames,
+    selectGames,
+    setSelectGames,
   } = useGameLobby(user, isDM);
 
   if (loading) {
@@ -53,6 +57,15 @@ export const GameLobby = () => {
   }
 
   const safeGames = Array.isArray(games) ? games : [];
+
+  // Permitir buscar por los últimos 6 caracteres del ID
+  const getFullGameId = (input) => {
+    if (!input) return input;
+    if (input.length === 24) return input;
+    // Buscar en la lista de partidas por los últimos 6 caracteres
+    const found = allGames?.find((g) => g._id.slice(-6) === input);
+    return found ? found._id : input;
+  };
 
   return (
     <div className="min-h-screen bg-gray-900 p-3 sm:p-4 md:p-6 lg:p-8">
@@ -102,19 +115,61 @@ export const GameLobby = () => {
             <h2 className="text-lg sm:text-xl font-semibold mb-4 text-blue-400 flex items-center gap-2">
               🔗 Unirse a Partida
             </h2>
-            <input
-              type="text"
-              placeholder="ID de la partida"
+            <InputClearable
               value={joinCode}
               onChange={(e) => setJoinCode(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 rounded-lg mb-3 text-sm sm:text-base"
+              placeholder="ID de la partida (completo o últimos 6)"
+              className="mb-3"
             />
             <button
-              onClick={joinGame}
+              onClick={() => joinGame(getFullGameId(joinCode))}
               className="w-full py-2 sm:py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors text-sm sm:text-base"
             >
               🔗 Unirse
             </button>
+
+            {/* Modal de selección de partidas */}
+            {selectGames && (
+              <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                <div className="bg-gray-800 rounded-lg p-6 shadow-2xl max-w-md w-full">
+                  <h3 className="text-lg font-semibold mb-4 text-purple-400">
+                    Selecciona la partida
+                  </h3>
+                  <ul className="space-y-3 mb-4">
+                    {selectGames.map((g) => (
+                      <li
+                        key={g._id}
+                        className="flex items-center justify-between bg-gray-700 rounded p-3"
+                      >
+                        <div>
+                          <span className="font-bold text-sm text-white">
+                            {g.name}
+                          </span>
+                          <span className="ml-2 text-xs px-2 py-1 rounded-full bg-green-600/50">
+                            {g.isActive ? 'Activa' : 'Finalizada'}
+                          </span>
+                        </div>
+                        <button
+                          className="ml-4 px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
+                          onClick={() => {
+                            setSelectGames(null);
+                            joinGame(g._id);
+                          }}
+                        >
+                          Unirse
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    className="w-full py-2 bg-gray-600 hover:bg-gray-500 rounded-lg text-sm text-white font-semibold"
+                    onClick={() => setSelectGames(null)}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -164,7 +219,7 @@ export const GameLobby = () => {
                     </span>
                     <span className="flex items-center gap-1">
                       ID: {game._id.slice(MAX_GAMES_DISPLAYED)}
-                      <CopyButton id={game._id.slice(MAX_GAMES_DISPLAYED)} />
+                      <CopyButton id={game._id} />
                     </span>
                   </div>
                 </div>

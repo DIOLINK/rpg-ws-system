@@ -50,12 +50,14 @@ export const useGameLobby = (user) => {
     }
   };
 
-  const joinGame = async () => {
-    if (!joinCode) return;
+  const [selectGames, setSelectGames] = useState(null);
+
+  const joinGame = async (gameId = joinCode) => {
+    if (!gameId) return;
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/game/join/${joinCode}`, {
+      const response = await fetch(`${API_BASE_URL}/game/join/${gameId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -65,7 +67,11 @@ export const useGameLobby = (user) => {
       });
 
       const data = await response.json();
-      navigate(`/game/${data.game._id}`);
+      if (data.selectGames) {
+        setSelectGames(data.selectGames);
+      } else if (data.game) {
+        navigate(`/game/${data.game._id}`);
+      }
     } catch (error) {
       console.error('Error joining game:', error);
     }
@@ -80,5 +86,7 @@ export const useGameLobby = (user) => {
     loading,
     createGame,
     joinGame,
+    selectGames,
+    setSelectGames,
   };
 };
