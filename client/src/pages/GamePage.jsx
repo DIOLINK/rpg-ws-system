@@ -6,6 +6,7 @@ import { ErrorMessage } from '../components/ErrorMessage';
 import { Loading } from '../components/Loading';
 import { useAuth } from '../context/AuthContext';
 import { useGameSocket } from '../hooks/useGameSocket';
+import { CopyButton, MAX_GAMES_DISPLAYED } from './GameLobby';
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -72,19 +73,14 @@ export const GamePage = () => {
               {connected ? 'Conectado' : 'Desconectado'}
             </span>
             <span className="text-xs text-gray-400 hidden sm:inline">
-              • Partida: {gameId.slice(-6)}
+              • Partida: {gameId.slice(MAX_GAMES_DISPLAYED)}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-400 sm:hidden">
-              ID: {gameId.slice(-6)}
+              ID: {gameId.slice(MAX_GAMES_DISPLAYED)}
             </span>
-            <button
-              onClick={() => navigator.clipboard.writeText(gameId)}
-              className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
-            >
-              📋 Copiar ID
-            </button>
+            <CopyButton id={gameId.slice(MAX_GAMES_DISPLAYED)} />
           </div>
         </div>
       </div>

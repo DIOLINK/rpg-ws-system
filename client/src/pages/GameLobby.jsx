@@ -2,7 +2,33 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useGameLobby } from '../hooks/useGameLobby';
 
-const BASE_URL = import.meta.env.VITE_API_URL;
+export const MAX_GAMES_DISPLAYED = -6;
+
+import { useState } from 'react';
+
+export function CopyButton({ id }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(id);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1200);
+  };
+
+  return (
+    <button
+      type="button"
+      className={`ml-1 px-2 py-1 rounded bg-gray-600 hover:bg-gray-500 text-gray-200 text-xs font-semibold focus:outline-none transition-all duration-300 ${
+        copied ? 'scale-110 bg-green-600' : ''
+      }`}
+      title={copied ? '¡Copiado!' : 'Copiar ID'}
+      onClick={handleCopy}
+    >
+      {copied ? '✅' : '📋'}
+    </button>
+  );
+}
 
 export const GameLobby = () => {
   const { user, isDM } = useAuth();
@@ -136,7 +162,10 @@ export const GameLobby = () => {
                       {game.players.length} jugador
                       {game.players.length !== 1 ? 'es' : ''}
                     </span>
-                    <span>ID: {game._id.slice(-6)}</span>
+                    <span className="flex items-center gap-1">
+                      ID: {game._id.slice(MAX_GAMES_DISPLAYED)}
+                      <CopyButton id={game._id.slice(MAX_GAMES_DISPLAYED)} />
+                    </span>
                   </div>
                 </div>
               ))}

@@ -52,6 +52,7 @@ const authService = {
       throw error;
     }
   },
+  getToken: () => localStorage.getItem('token'),
 };
 
 export { authService };
