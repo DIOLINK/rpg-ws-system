@@ -24,7 +24,7 @@ const NavBar = () => {
           </Link>
         </div>
         {isDM && (
-          <div className="flex flex-col items-center basis-1/3 px-4 py-2">
+          <div className="flex flex-col items-center basis-1/4 px-4 py-2">
             <Link
               to="/create-game"
               className="hover:text-yellow-300 flex flex-col items-center"
@@ -34,7 +34,16 @@ const NavBar = () => {
             </Link>
           </div>
         )}
-        <div className="flex flex-col items-center basis-1/3 px-4 py-2">
+        <div className="flex flex-col items-center basis-1/4 px-4 py-2">
+          <Link
+            to="/create-character"
+            className="hover:text-yellow-300 flex flex-col items-center"
+          >
+            <FaDiceD20 className="text-2xl" />
+            <span className="text-sm">Crear Personaje</span>
+          </Link>
+        </div>
+        <div className="flex flex-col items-center basis-1/4 px-4 py-2">
           <Link
             to="/profile"
             className="hover:text-yellow-300 flex flex-col items-center"
