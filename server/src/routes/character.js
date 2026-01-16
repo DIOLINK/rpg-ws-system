@@ -5,6 +5,30 @@ import { User } from '../models/User.js';
 
 const router = express.Router();
 
+// Asociar personaje a una partida
+router.post(
+  '/:characterId/assign-to-game/:gameId',
+  authenticateUser,
+  async (req, res) => {
+    try {
+      const { characterId, gameId } = req.params;
+      const character = await Character.findById(characterId);
+      if (!character)
+        return res.status(404).json({ error: 'Personaje no encontrado' });
+      // Solo el dueño puede asociar su personaje
+      if (character.playerId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ error: 'No autorizado' });
+      }
+      character.gameId = gameId;
+      character.validated = false; // Siempre requiere validación al asociar
+      await character.save();
+      res.json({ success: true, character });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
+
 // Enviar personaje a validación (jugador)
 router.post('/:id/send', authenticateUser, async (req, res) => {
   try {
