@@ -1,6 +1,8 @@
 import { useState } from 'react';
 
 export const DMPanel = ({ characters, onDMCommand }) => {
+  // Personajes pendientes de validación
+  const pendingCharacters = characters.filter((c) => c.validated === false);
   const [selectedCharacters, setSelectedCharacters] = useState([]);
   const [damage, setDamage] = useState(0);
   const [damageType, setDamageType] = useState('normal');
@@ -56,6 +58,64 @@ export const DMPanel = ({ characters, onDMCommand }) => {
 
   return (
     <div className="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl">
+      {/* Sección de aprobación de personajes */}
+      {pendingCharacters.length > 0 && (
+        <div className="mb-6 p-3 sm:p-4 bg-yellow-900/70 border border-yellow-500/30 rounded-lg">
+          <h3 className="text-lg font-semibold text-yellow-300 mb-3">
+            📝 Personajes pendientes de aprobación
+          </h3>
+          <div className="space-y-3">
+            {pendingCharacters.map((char) => (
+              <div
+                key={char._id}
+                className="bg-gray-700 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+              >
+                <div>
+                  <span className="font-medium text-base text-white">
+                    {char.name}
+                  </span>
+                  <span className="ml-2 text-xs text-gray-400">
+                    por{' '}
+                    {char.playerName ||
+                      (typeof char.playerId === 'object'
+                        ? char.playerId.name ||
+                          char.playerId.email ||
+                          char.playerId._id
+                        : char.playerId)}
+                  </span>
+                  <p className="text-xs text-gray-300 mt-1">
+                    {char.description}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-xs font-semibold text-white"
+                    onClick={() =>
+                      onDMCommand('validate-character', {
+                        characterId: char._id,
+                        validated: true,
+                      })
+                    }
+                  >
+                    ✅ Aprobar
+                  </button>
+                  <button
+                    className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-xs font-semibold text-white"
+                    onClick={() =>
+                      onDMCommand('validate-character', {
+                        characterId: char._id,
+                        validated: false,
+                      })
+                    }
+                  >
+                    ❌ Rechazar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-purple-400">
           🎭 Panel del DM
