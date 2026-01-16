@@ -31,7 +31,6 @@ PrivateRoute.propTypes = {
 
 function AppRoutes() {
   const { user } = useAuth();
-  console.log('🚀 ~ AppRoutes ~ user:', user);
 
   return (
     <ErrorBoundary>
