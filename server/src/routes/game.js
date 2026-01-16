@@ -34,23 +34,48 @@ router.post('/join/:gameId', authenticateUser, async (req, res) => {
     const { gameId } = req.params;
     const { characterName } = req.body;
 
-    const game = await Game.findById(gameId);
-    if (!game) return res.status(404).json({ error: 'Partida no encontrada' });
+    let games = [];
+    if (gameId.length < 24) {
+      // Buscar partidas cuyo _id termine con los caracteres dados
+      games = await Game.find({}).lean();
+      games = games.filter((g) => g._id.toString().endsWith(gameId));
+    } else {
+      const game = await Game.findById(gameId);
+      if (game) games = [game];
+    }
 
-    // Crear personaje para el jugador
+    if (games.length === 0) {
+      return res
+        .status(404)
+        .json({ error: 'No se encontró ninguna partida con ese código.' });
+    }
+    if (games.length > 1) {
+      // Devuelve las partidas encontradas para que el usuario elija
+      return res.status(200).json({
+        selectGames: games.map((g) => ({
+          _id: g._id,
+          name: g.name,
+          isActive: g.isActive,
+          dmId: g.dmId,
+          players: g.players,
+        })),
+      });
+    }
+
+    // Unir al usuario a la única partida encontrada
+    const game = games[0];
     const character = await Character.create({
       name: characterName,
       playerId: req.user._id,
       gameId: game._id,
-      canEdit: false, // Por defecto no puede editar
+      canEdit: false,
     });
 
-    // Añadir a la partida
     game.players.push({
       userId: req.user._id,
       characterId: character._id,
     });
-    await game.save();
+    await Game.findByIdAndUpdate(game._id, { players: game.players });
 
     res.json({ game, character });
   } catch (error) {
