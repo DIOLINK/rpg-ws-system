@@ -111,9 +111,11 @@ export const useCharacterManagement = () => {
         id,
         localStorage.getItem('token')
       );
-      setCharacters((chars) =>
-        chars.map((c) => (c._id === id ? { ...c, validated: false } : c))
+      // Refrescar personajes desde backend
+      const updated = await characterService.getAll(
+        localStorage.getItem('token')
       );
+      setCharacters(updated);
     } catch (e) {
       setError(e.message);
     } finally {
