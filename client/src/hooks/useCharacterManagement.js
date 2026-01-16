@@ -129,7 +129,7 @@ export const useCharacterManagement = () => {
   const handleCancel = () => {
     setIsEditing(false);
     setEditingId(null);
-    setFormCharacter({ name: '', description: '' });
+    setFormCharacter({ name: '', description: '', classType: '' });
   };
 
   return {

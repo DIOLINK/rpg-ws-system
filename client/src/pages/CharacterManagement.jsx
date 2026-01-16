@@ -6,7 +6,6 @@ const CharacterManagement = () => {
   const {
     characters,
     loading,
-    error,
     formCharacter,
     isEditing,
     editingId,
