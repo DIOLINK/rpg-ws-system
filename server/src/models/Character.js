@@ -11,7 +11,6 @@ const characterSchema = new mongoose.Schema(
     gameId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Game',
-      required: true,
     },
     avatar: { type: String },
 
@@ -69,7 +68,6 @@ const characterSchema = new mongoose.Schema(
 
     classType: {
       type: String,
-      required: true,
     },
     level: {
       type: Number,

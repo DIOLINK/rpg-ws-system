@@ -73,12 +73,13 @@ router.post('/', authenticateUser, async (req, res) => {
     if (count >= 2) {
       return res.status(400).json({ error: 'Solo puedes tener 2 personajes.' });
     }
-    const { name, description } = req.body;
+    const { name, description, classType } = req.body;
     if (!name)
       return res.status(400).json({ error: 'El nombre es obligatorio.' });
     const character = new Character({
       name,
       description,
+      classType,
       playerId: userId,
       validated: false,
       validationComment: '',
