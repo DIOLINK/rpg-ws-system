@@ -58,6 +58,27 @@ router.post('/join/:gameId', authenticateUser, async (req, res) => {
   }
 });
 
+// Ruta para obtener las partidas de un usuario
+router.get('/my-games', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Buscar partidas donde el usuario sea jugador o DM
+    const games = await Game.find({
+      $or: [{ dmId: userId }, { 'players.userId': userId }],
+    })
+      .populate('dmId', 'name picture')
+      .populate('players.userId', 'name picture');
+
+    res.json(games);
+  } catch (error) {
+    console.error('Error al obtener las partidas del usuario:', error);
+    res
+      .status(500)
+      .json({ error: 'Error al obtener las partidas del usuario' });
+  }
+});
+
 // Obtener partida y personajes
 router.get('/:gameId', authenticateUser, async (req, res) => {
   try {
