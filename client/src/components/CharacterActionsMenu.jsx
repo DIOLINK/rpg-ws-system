@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { FaEdit, FaEllipsisV, FaPaperPlane, FaTrash } from 'react-icons/fa';
+import useToastStore from '../context/toastStore';
 
 const CharacterActionsMenu = ({
   onEdit,
@@ -24,6 +25,34 @@ const CharacterActionsMenu = ({
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
+
+  const addToast = useToastStore((state) => state.addToast);
+
+  const handleDelete = () => {
+    setOpen(false);
+    addToast({
+      type: 'warning',
+      message: '¿Seguro que deseas eliminar este personaje?',
+      duration: 0, // No autocierra
+      actions: [
+        {
+          label: 'Cancelar',
+          variant: 'secondary',
+          onClick: (toastId) => {
+            useToastStore.getState().removeToast(toastId);
+          },
+        },
+        {
+          label: 'Eliminar',
+          variant: 'danger',
+          onClick: (toastId) => {
+            useToastStore.getState().removeToast(toastId);
+            onDelete();
+          },
+        },
+      ],
+    });
+  };
 
   return (
     <div className="relative inline-block text-left" ref={menuRef}>
@@ -61,10 +90,7 @@ const CharacterActionsMenu = ({
             <FaPaperPlane className="mr-2 text-green-600" /> Validación
           </button>
           <button
-            onClick={() => {
-              setOpen(false);
-              onDelete();
-            }}
+            onClick={handleDelete}
             className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-red-100 dark:hover:bg-red-600 rounded-b-lg"
             title="Eliminar personaje"
           >

@@ -1,13 +1,18 @@
 import { useEffect } from 'react';
 import useToastStore from '../context/toastStore';
 
-const Toast = ({ id, type, message, duration = 3000 }) => {
+// Ahora acepta 'actions' como prop opcional
+const Toast = ({ id, type, message, duration = 3000, actions }) => {
   const removeToast = useToastStore((state) => state.removeToast);
 
   useEffect(() => {
-    const timer = setTimeout(() => removeToast(id), duration);
-    return () => clearTimeout(timer);
-  }, [id, duration, removeToast]);
+    if (!actions || actions.length === 0) {
+      const timer = setTimeout(() => removeToast(id), duration);
+      return () => clearTimeout(timer);
+    }
+    // Si hay acciones, no autocierra
+    return undefined;
+  }, [id, duration, removeToast, actions]);
 
   const getStyles = () => {
     switch (type) {
@@ -68,10 +73,31 @@ const Toast = ({ id, type, message, duration = 3000 }) => {
       >
         {message}
       </span>
+      {actions && actions.length > 0 && (
+        <div className="flex gap-2 ml-2">
+          {actions.map((action, idx) => (
+            <button
+              key={idx}
+              onClick={() => action.onClick(id)}
+              className={`px-3 py-1 rounded font-semibold text-sm ${
+                action.variant === 'danger'
+                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  : action.variant === 'secondary'
+                  ? 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                  : 'bg-white text-gray-800 hover:bg-gray-100'
+              }`}
+              style={{ pointerEvents: 'auto' }}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+      )}
       <button
         onClick={() => removeToast(id)}
         className="ml-2 text-white text-lg font-bold opacity-70 hover:opacity-100 transition-opacity"
         aria-label="Cerrar"
+        style={{ pointerEvents: 'auto' }}
       >
         ×
       </button>
