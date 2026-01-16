@@ -10,7 +10,8 @@ export default function ErrorPage() {
       </p>
       <a
         href="/"
-        className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded shadow-lg transition-all"
+        className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded shadow-lg transition-all drop-shadow-md"
+        style={{ textShadow: '0 1px 4px rgba(0,0,0,0.7)' }}
       >
         Volver al inicio
       </a>
