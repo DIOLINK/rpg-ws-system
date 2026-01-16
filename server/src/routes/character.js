@@ -1,3 +1,10 @@
+import express from 'express';
+import { authenticateUser } from '../middleware/auth.js';
+import { Character } from '../models/Character.js';
+import { User } from '../models/User.js';
+
+const router = express.Router();
+
 // Enviar personaje a validación (jugador)
 router.post('/:id/send', authenticateUser, async (req, res) => {
   try {
@@ -16,12 +23,6 @@ router.post('/:id/send', authenticateUser, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-import express from 'express';
-import { authenticateUser } from '../middleware/auth.js';
-import { Character } from '../models/Character.js';
-import { User } from '../models/User.js';
-
-const router = express.Router();
 
 // Obtener personajes pendientes de validación (solo DM)
 router.get('/pending', authenticateUser, async (req, res) => {
