@@ -4,6 +4,7 @@ import './App.css';
 import { Login } from './components/Login';
 import NavBar from './components/NavBar';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import CreateCharacterPage from './pages/CreateCharacterPage';
 import { GameLobby } from './pages/GameLobby';
 import { GamePage } from './pages/GamePage';
 import { Profile } from './pages/Profile';
@@ -57,6 +58,14 @@ function AppRoutes() {
         element={
           <PrivateRoute>
             <Profile />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/create-character"
+        element={
+          <PrivateRoute>
+            <CreateCharacterPage />
           </PrivateRoute>
         }
       />

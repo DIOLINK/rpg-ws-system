@@ -1,7 +1,7 @@
 import { useAuth } from '../context/AuthContext';
 
 export const Profile = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   if (!user) {
     return (
@@ -30,7 +30,7 @@ export const Profile = () => {
         </div>
         <button
           className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
-          onClick={() => alert('Función de cerrar sesión aún no implementada')}
+          onClick={logout}
         >
           Cerrar sesión
         </button>
