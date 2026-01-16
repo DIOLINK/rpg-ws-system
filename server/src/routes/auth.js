@@ -84,6 +84,7 @@ router.get('/me', async (req, res) => {
       name: user.name,
       email: user.email,
       isDM: user.isDM,
+      picture: user.picture,
     });
   } catch (error) {
     console.error('Error during token validation:', error);
