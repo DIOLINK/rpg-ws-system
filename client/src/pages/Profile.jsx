@@ -20,7 +20,7 @@ export const Profile = () => {
           Perfil de Usuario
         </h1>
         <div className="flex items-center gap-4 mb-6">
-          {imgError || !user.picture ? (
+          {imgError || !user.photoURL ? (
             <div className="w-24 h-24 flex items-center justify-center rounded-full bg-gray-700 border-2 border-gray-700">
               {/* Ícono de usuario genérico SVG */}
               <svg
@@ -39,14 +39,16 @@ export const Profile = () => {
             </div>
           ) : (
             <img
-              src={user.picture}
+              src={user.photoURL}
               alt="Foto de perfil"
               className="w-24 h-24 rounded-full border-2 border-gray-700"
               onError={() => setImgError(true)}
             />
           )}
           <div>
-            <p className="text-xl text-white font-semibold">{user.name}</p>
+            <p className="text-xl text-white font-semibold">
+              {user.displayName}
+            </p>
             <p className="text-gray-400">{user.email}</p>
           </div>
         </div>

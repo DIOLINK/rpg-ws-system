@@ -53,11 +53,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (googleToken) => {
+  const login = async () => {
     try {
-      const data = await authService.loginWithGoogle(googleToken);
+      const data = await authService.loginWithGoogle();
       setUser(data.user);
-      localStorage.setItem('token', data.token);
+      // El token de Google ya se guarda en localStorage en authService
       return data;
     } catch (error) {
       console.error('Error during login:', error);

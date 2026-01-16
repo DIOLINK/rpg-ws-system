@@ -25,9 +25,9 @@ export const signInWithGoogle = async () => {
 const authService = {
   loginWithGoogle: async () => {
     try {
-      const { _user, token } = await signInWithGoogle();
+      const { token } = await signInWithGoogle();
 
-      // Enviar el token al backend para validación
+      // Enviar el token al backend para validación/registro y obtener el usuario en formato Firebase
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/auth/google`,
         {
@@ -44,8 +44,9 @@ const authService = {
       }
 
       const data = await response.json();
-      localStorage.setItem('token', data.token);
-      return { user: data.user, token: data.token };
+      // Guardar el token de Google, no el del backend
+      localStorage.setItem('token', token);
+      return { user: data.user, token };
     } catch (error) {
       console.error('Error en loginWithGoogle:', error);
       throw error;
