@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { MAX_GAMES_DISPLAYED } from '../pages/GameLobby';
 
 export const CharacterSheet = ({ character, onUpdate }) => {
   const { isDM } = useAuth();
@@ -61,7 +62,7 @@ export const CharacterSheet = ({ character, onUpdate }) => {
             </h2>
           )}
           <p className="text-xs sm:text-sm text-gray-400 mt-1">
-            ID: {character._id.slice(-6)}
+            ID: {character._id.slice(MAX_GAMES_DISPLAYED)}
           </p>
         </div>
 
