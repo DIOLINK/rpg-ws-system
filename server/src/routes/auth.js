@@ -1,4 +1,5 @@
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import admin from '../../config/firebaseAdmin.js';
 import { User } from '../models/User.js';
 
@@ -52,7 +53,13 @@ router.post('/google', async (req, res) => {
       console.log('Usuario ya existe en la base de datos local:', user);
     }
 
-    res.json({ message: 'Autenticación exitosa', user });
+    // Generar un JWT propio para el usuario
+    const token = jwt.sign(
+      { id: user._id, googleId: user.googleId, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    res.json({ message: 'Autenticación exitosa', user, token });
   } catch (error) {
     console.error('Error verificando token de Firebase:', error);
     res.status(401).json({ message: 'Token inválido' });
