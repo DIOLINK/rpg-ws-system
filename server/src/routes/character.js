@@ -52,4 +52,99 @@ router.post('/validate/:id', authenticateUser, async (req, res) => {
   }
 });
 
+// Obtener personajes del usuario autenticado (con paginación futura)
+router.get('/', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    // Preparado para paginación futura
+    // const { page = 1, limit = 10 } = req.query;
+    const characters = await Character.find({ playerId: userId });
+    res.json(characters);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Crear personaje (máximo 2 por usuario)
+router.post('/', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const count = await Character.countDocuments({ playerId: userId });
+    if (count >= 2) {
+      return res.status(400).json({ error: 'Solo puedes tener 2 personajes.' });
+    }
+    const { name, description } = req.body;
+    if (!name)
+      return res.status(400).json({ error: 'El nombre es obligatorio.' });
+    const character = new Character({
+      name,
+      description,
+      playerId: userId,
+      validated: false,
+      validationComment: '',
+    });
+    await character.save();
+    res.status(201).json(character);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Editar personaje (solo si no está validado y es del usuario)
+router.put('/:id', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { id } = req.params;
+    const character = await Character.findOne({ _id: id, playerId: userId });
+    if (!character)
+      return res.status(404).json({ error: 'Personaje no encontrado.' });
+    if (character.validated)
+      return res
+        .status(403)
+        .json({ error: 'No puedes editar un personaje validado.' });
+    const { name, description } = req.body;
+    if (name !== undefined) character.name = name;
+    if (description !== undefined) character.description = description;
+    await character.save();
+    res.json(character);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Eliminar personaje (siempre permitido si es del usuario)
+router.delete('/:id', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { id } = req.params;
+    const character = await Character.findOneAndDelete({
+      _id: id,
+      playerId: userId,
+    });
+    if (!character)
+      return res.status(404).json({ error: 'Personaje no encontrado.' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Enviar personaje a validación (solo si es del usuario y no está validado)
+router.post('/:id/send', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { id } = req.params;
+    const character = await Character.findOne({ _id: id, playerId: userId });
+    if (!character)
+      return res.status(404).json({ error: 'Personaje no encontrado.' });
+    if (character.validated)
+      return res.status(400).json({ error: 'El personaje ya está validado.' });
+    character.validated = false; // Marca como pendiente
+    await character.save();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
