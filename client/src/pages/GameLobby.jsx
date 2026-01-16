@@ -36,7 +36,7 @@ export const GameLobby = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold mb-1">
-                Bienvenido, {user.name}
+                Bienvenido, {user.displayName}
               </h1>
               <p className="text-sm text-gray-400">
                 Rol: {isDM ? '🎭 Dungeon Master' : '🎮 Jugador'}
