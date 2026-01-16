@@ -79,6 +79,21 @@ body {
   animation: fadeIn 0.3s ease-out;
 }
 
+/* Animación para Toast */
+.animate-toast-in {
+  animation: toast-in 0.5s cubic-bezier(0.4, 2, 0.3, 1);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-40px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* Touch targets más grandes en mobile */
 @media (max-width: 640px) {
   button,

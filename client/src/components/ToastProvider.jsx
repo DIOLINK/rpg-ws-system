@@ -39,11 +39,42 @@ const Toast = ({ id, type, message, duration = 3000 }) => {
 
   return (
     <div
-      className={`flex items-center p-4 rounded shadow-lg mb-4 ${getStyles()}`}
+      className={`flex items-center gap-3 p-4 rounded-xl shadow-2xl mb-4 border-2 ${getStyles()}`}
       role="alert"
+      style={{
+        minHeight: '24px',
+        fontSize: '1.1rem',
+        letterSpacing: '0.01em',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+        borderColor:
+          type === 'error'
+            ? '#b91c1c'
+            : type === 'success'
+            ? '#059669'
+            : type === 'warning'
+            ? '#eab308'
+            : '#a21caf',
+        backdropFilter: 'blur(2px)',
+        color: 'white',
+        alignItems: 'center',
+      }}
     >
-      {getIcon() && <span className="mr-2 text-xl">{getIcon()}</span>}
-      <span>{message}</span>
+      {getIcon() && (
+        <span className="text-2xl drop-shadow-lg">{getIcon()}</span>
+      )}
+      <span
+        className="flex-1 whitespace-pre-line"
+        style={{ textShadow: '0 1px 4px rgba(0,0,0,0.25)' }}
+      >
+        {message}
+      </span>
+      <button
+        onClick={() => removeToast(id)}
+        className="ml-2 text-white text-lg font-bold opacity-70 hover:opacity-100 transition-opacity"
+        aria-label="Cerrar"
+      >
+        ×
+      </button>
     </div>
   );
 };
@@ -52,9 +83,22 @@ const ToastProvider = () => {
   const toasts = useToastStore((state) => state.toasts);
 
   return (
-    <div className="fixed bottom-4 right-4 w-80">
-      {toasts.map((toast) => (
-        <Toast key={toast.id} {...toast} />
+    <div
+      className="fixed top-8 left-1/2 z-50 flex flex-col items-center pointer-events-none"
+      style={{ width: '90vw', transform: 'translateX(-50%)' }}
+    >
+      {toasts.map((toast, idx) => (
+        <div
+          key={toast.id}
+          className="pointer-events-auto w-full animate-toast-in"
+          style={{
+            animationDelay: `${idx * 0.1}s`,
+            maxWidth: '90vw',
+            transition: 'transform 0.3s cubic-bezier(.4,2,.3,1), opacity 0.3s',
+          }}
+        >
+          <Toast key={toast.id} {...toast} />
+        </div>
       ))}
     </div>
   );

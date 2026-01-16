@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import useToastStore from '../context/toastStore';
 import { characterService } from '../services/characterService';
 
 export const useCharacterManagement = () => {
@@ -7,6 +8,7 @@ export const useCharacterManagement = () => {
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const addToast = useToastStore((state) => state.addToast);
 
   // Para formulario
   const [formCharacter, setFormCharacter] = useState({
@@ -26,6 +28,14 @@ export const useCharacterManagement = () => {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [user]);
+
+  // Manejo de errores con toasts
+  useEffect(() => {
+    if (error) {
+      addToast({ type: 'error', message: error });
+      setError(null); // Resetear error después de mostrar
+    }
+  }, [error, addToast]);
 
   // Crear personaje
   const addCharacter = async () => {

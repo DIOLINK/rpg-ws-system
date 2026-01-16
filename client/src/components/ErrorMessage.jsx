@@ -1,15 +1,4 @@
-import useToastStore from '../context/toastStore';
-
 export const ErrorMessage = ({ message, onRetry }) => {
-  const addToast = useToastStore((state) => state.addToast);
-
-  const handleRetry = () => {
-    if (onRetry) {
-      onRetry();
-      addToast({ type: 'info', message: 'Reintentando...' });
-    }
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
       <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full shadow-xl">
@@ -19,7 +8,7 @@ export const ErrorMessage = ({ message, onRetry }) => {
           <p className="text-gray-400 text-sm mb-4">{message}</p>
           {onRetry && (
             <button
-              onClick={handleRetry}
+              onClick={onRetry}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-medium transition-colors"
             >
               Reintentar

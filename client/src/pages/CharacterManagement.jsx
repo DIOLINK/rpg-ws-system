@@ -23,7 +23,7 @@ const CharacterManagement = () => {
     <div className="p-4 max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">Gestión de Personajes</h1>
       {loading && <div className="mb-4 text-blue-600">Cargando...</div>}
-      {error && <div className="mb-4 text-red-600">Error: {error}</div>}
+      {/* El error ya se notifica por toast, pero se puede dejar el mensaje visual si se desea */}
       <div className="mb-6">
         <h2 className="text-xl font-semibold mb-2">
           {isEditing ? 'Editar Personaje' : 'Crear Nuevo Personaje'}
