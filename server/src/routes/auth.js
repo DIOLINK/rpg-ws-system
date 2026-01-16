@@ -1,6 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import admin from '../../config/firebaseAdmin.js';
+import { authenticateUser } from '../middleware/auth.js';
 import { User } from '../models/User.js';
 
 const router = express.Router();
@@ -54,51 +55,44 @@ router.post('/google', async (req, res) => {
     }
 
     // Generar un JWT propio para el usuario
-    const token = jwt.sign(
+    const jwtToken = jwt.sign(
       { id: user._id, googleId: user.googleId, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-    res.json({ message: 'Autenticación exitosa', user, token });
+    res.json({
+      message: 'Autenticación exitosa',
+      user: {
+        uid: user.googleId,
+        displayName: user.name,
+        email: user.email,
+        emailVerified: true, // Asumimos true porque Google/Firebase lo valida
+        photoURL: user.picture,
+        isDM: user.isDM,
+      },
+      token: jwtToken,
+    });
   } catch (error) {
     console.error('Error verificando token de Firebase:', error);
     res.status(401).json({ message: 'Token inválido' });
   }
 });
 
-// Ruta para obtener información del usuario autenticado
-router.get('/me', async (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ error: 'No token provided' });
+// Ruta para obtener información del usuario autenticado usando el middleware
+router.get('/me', authenticateUser, async (req, res) => {
+  const user = req.user;
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
   }
-
-  const token = authHeader.split(' ')[1];
-
-  try {
-    // Validar el token con Firebase Admin
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    const googleId =
-      decodedToken.uid || decodedToken.sub || decodedToken.user_id;
-    const user = await User.findOne({ googleId });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    res.json({
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      isDM: user.isDM,
-      picture: user.picture,
-    });
-  } catch (error) {
-    console.error('Error during token validation:', error);
-    res
-      .status(500)
-      .json({ error: 'An unexpected error occurred during token validation.' });
-  }
+  res.json({
+    uid: user.googleId,
+    displayName: user.name,
+    email: user.email,
+    emailVerified: true, // Asumimos true porque Google/Firebase lo valida
+    photoURL: user.picture,
+    isDM: user.isDM,
+    // Puedes agregar más campos si lo deseas
+  });
 });
 
 export default router;
