@@ -87,7 +87,11 @@ export const GamePage = () => {
 
       <div className="max-w-7xl mx-auto">
         {/* Layout principal */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
+        <div
+          className={`grid grid-cols-1 ${
+            isDM ? 'lg:grid-cols-3' : ''
+          } gap-3 sm:gap-4 md:gap-6`}
+        >
           {/* Panel DM - Ocupa toda la fila en desktop */}
           {isDM && (
             <div className="lg:col-span-3">
@@ -97,7 +101,7 @@ export const GamePage = () => {
 
           {/* Mi personaje - Destacado */}
           {myCharacter && (
-            <div className="lg:col-span-2">
+            <div className={isDM ? 'lg:col-span-2' : 'col-span-1 w-full'}>
               <div className="mb-2 sm:mb-3">
                 <h2 className="text-lg sm:text-xl font-semibold text-purple-400 flex items-center gap-2">
                   ⭐ Tu Personaje
@@ -113,59 +117,62 @@ export const GamePage = () => {
             </div>
           )}
 
-          {/* Sidebar en desktop */}
-          <div className="lg:col-span-1 space-y-3 sm:space-y-4">
-            {/* Stats rápidos */}
-            <div className="bg-gray-800 rounded-lg p-3 sm:p-4 shadow-xl">
-              <h3 className="text-sm sm:text-base font-semibold mb-2 text-purple-400">
-                📊 Resumen
-              </h3>
-              <div className="space-y-2 text-xs sm:text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Personajes:</span>
-                  <span className="font-medium">{characters.length}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Tu HP:</span>
-                  <span className="font-medium text-red-400">
-                    {myCharacter?.stats.hp || 0}/{myCharacter?.stats.maxHp || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Tu Mana:</span>
-                  <span className="font-medium text-blue-400">
-                    {myCharacter?.stats.mana || 0}/
-                    {myCharacter?.stats.maxMana || 0}
-                  </span>
+          {/* Sidebar en desktop, solo si es DM */}
+          {isDM && (
+            <div className="lg:col-span-1 space-y-3 sm:space-y-4">
+              {/* Stats rápidos */}
+              <div className="bg-gray-800 rounded-lg p-3 sm:p-4 shadow-xl">
+                <h3 className="text-sm sm:text-base font-semibold mb-2 text-purple-400">
+                  📊 Resumen
+                </h3>
+                <div className="space-y-2 text-xs sm:text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Personajes:</span>
+                    <span className="font-medium">{characters.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Tu HP:</span>
+                    <span className="font-medium text-red-400">
+                      {myCharacter?.stats.hp || 0}/
+                      {myCharacter?.stats.maxHp || 0}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Tu Mana:</span>
+                    <span className="font-medium text-blue-400">
+                      {myCharacter?.stats.mana || 0}/
+                      {myCharacter?.stats.maxMana || 0}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Acciones rápidas */}
-            <div className="bg-gray-800 rounded-lg p-3 sm:p-4 shadow-xl">
-              <h3 className="text-sm sm:text-base font-semibold mb-2 text-purple-400">
-                ⚡ Acciones
-              </h3>
-              <div className="space-y-2">
-                <button
-                  onClick={() => window.location.reload()}
-                  className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs sm:text-sm transition-colors"
-                >
-                  🔄 Recargar
-                </button>
-                <button
-                  onClick={() =>
-                    navigator.share
-                      ? navigator.share({ title: 'RPG Game', text: gameId })
-                      : navigator.clipboard.writeText(gameId)
-                  }
-                  className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs sm:text-sm transition-colors"
-                >
-                  📤 Compartir ID
-                </button>
+              {/* Acciones rápidas */}
+              <div className="bg-gray-800 rounded-lg p-3 sm:p-4 shadow-xl">
+                <h3 className="text-sm sm:text-base font-semibold mb-2 text-purple-400">
+                  ⚡ Acciones
+                </h3>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs sm:text-sm transition-colors"
+                  >
+                    🔄 Recargar
+                  </button>
+                  <button
+                    onClick={() =>
+                      navigator.share
+                        ? navigator.share({ title: 'RPG Game', text: gameId })
+                        : navigator.clipboard.writeText(gameId)
+                    }
+                    className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs sm:text-sm transition-colors"
+                  >
+                    📤 Compartir ID
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Otros personajes */}
