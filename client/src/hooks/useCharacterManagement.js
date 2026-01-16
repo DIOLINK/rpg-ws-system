@@ -14,6 +14,7 @@ export const useCharacterManagement = () => {
   const [formCharacter, setFormCharacter] = useState({
     name: '',
     description: '',
+    classType: '',
   });
   const [editingId, setEditingId] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -46,7 +47,7 @@ export const useCharacterManagement = () => {
         localStorage.getItem('token')
       );
       setCharacters((chars) => [...chars, newChar]);
-      setFormCharacter({ name: '', description: '' });
+      setFormCharacter({ name: '', description: '', classType: '' });
     } catch (e) {
       setError(e.message);
     } finally {
@@ -58,7 +59,11 @@ export const useCharacterManagement = () => {
   const editCharacter = (id) => {
     const char = characters.find((c) => c._id === id);
     if (char && !char.validated) {
-      setFormCharacter({ name: char.name, description: char.description });
+      setFormCharacter({
+        name: char.name,
+        description: char.description,
+        classType: char.classType || '',
+      });
       setEditingId(id);
       setIsEditing(true);
     }
@@ -75,7 +80,7 @@ export const useCharacterManagement = () => {
       setCharacters((chars) =>
         chars.map((c) => (c._id === editingId ? updated : c))
       );
-      setFormCharacter({ name: '', description: '' });
+      setFormCharacter({ name: '', description: '', classType: '' });
       setEditingId(null);
       setIsEditing(false);
     } catch (e) {

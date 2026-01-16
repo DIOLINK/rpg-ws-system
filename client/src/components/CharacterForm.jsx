@@ -37,6 +37,26 @@ const CharacterForm = ({
           disabled={disabled}
         />
       </div>
+      <div>
+        <label className="block font-semibold">Clase</label>
+        <select
+          name="classType"
+          value={character.classType || ''}
+          onChange={onChange}
+          className="p-2 border rounded w-full"
+          disabled={disabled}
+          required
+        >
+          <option value="" disabled>
+            Selecciona una clase
+          </option>
+          <option value="guerrero">Guerrero</option>
+          <option value="mago">Mago</option>
+          <option value="ladron">Ladrón</option>
+          <option value="clerigo">Clérigo</option>
+          <option value="explorador">Explorador</option>
+        </select>
+      </div>
       <div className="flex space-x-2">
         <button
           type="submit"
