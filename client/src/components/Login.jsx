@@ -5,9 +5,12 @@ import { ErrorMessage } from './ErrorMessage';
 
 export const Login = () => {
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const { login } = useAuth();
 
   const handleLogin = async () => {
+    setError(null);
+    setLoading(true);
     try {
       const { user, token } = await signInWithGoogle();
       await login(token); // Actualizar el estado del usuario en el contexto
@@ -19,6 +22,8 @@ export const Login = () => {
       } else {
         setError('Error al iniciar sesión con Google');
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -37,12 +42,16 @@ export const Login = () => {
         </div>
 
         {/* Google Login */}
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center justify-center min-h-[56px]">
           <button
             onClick={handleLogin}
-            className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded"
+            className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+            disabled={loading}
           >
-            Iniciar sesión con Google
+            {loading && (
+              <span className="inline-block animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></span>
+            )}
+            {loading ? 'Conectando...' : 'Iniciar sesión con Google'}
           </button>
         </div>
 
