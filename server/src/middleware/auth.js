@@ -27,6 +27,7 @@ export const authenticateUser = async (req, res, next) => {
 
     if (!user) {
       user = await User.create({
+        _id: payload._id,
         googleId,
         email: payload.email,
         name: payload.name,

@@ -63,6 +63,7 @@ router.post('/google', async (req, res) => {
     res.json({
       message: 'Autenticación exitosa',
       user: {
+        _id: user._id,
         uid: user.googleId,
         displayName: user.name,
         email: user.email,
@@ -85,6 +86,7 @@ router.get('/me', authenticateUser, async (req, res) => {
     return res.status(404).json({ error: 'User not found' });
   }
   res.json({
+    _id: user._id,
     uid: user.googleId,
     displayName: user.name,
     email: user.email,
