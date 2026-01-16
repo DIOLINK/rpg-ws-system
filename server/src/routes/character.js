@@ -1,3 +1,21 @@
+// Enviar personaje a validación (jugador)
+router.post('/:id/send', authenticateUser, async (req, res) => {
+  try {
+    const character = await Character.findById(req.params.id);
+    if (!character)
+      return res.status(404).json({ error: 'Personaje no encontrado' });
+    // Solo el dueño puede enviar a validación
+    if (character.playerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+    character.validated = false;
+    character.validationComment = '';
+    await character.save();
+    res.json({ success: true, character });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 import express from 'express';
 import { authenticateUser } from '../middleware/auth.js';
 import { Character } from '../models/Character.js';
