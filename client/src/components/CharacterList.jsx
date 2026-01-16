@@ -1,3 +1,4 @@
+import CharacterActionsMenu from './CharacterActionsMenu';
 import CharacterStatusBadge from './CharacterStatusBadge';
 
 const CharacterList = ({
@@ -14,9 +15,9 @@ const CharacterList = ({
     <ul className="space-y-4">
       {characters.map((char) => (
         <li
-          key={char.id}
+          key={char._id}
           className={`p-4 border rounded flex flex-col md:flex-row md:justify-between md:items-center ${
-            currentEditingId === char.id ? 'bg-blue-50' : ''
+            currentEditingId === char._id ? 'bg-blue-50' : ''
           }`}
         >
           <div>
@@ -28,28 +29,13 @@ const CharacterList = ({
             <p className="text-sm text-gray-600 mt-1">{char.description}</p>
           </div>
           <div className="flex space-x-2 mt-2 md:mt-0">
-            {!char.validated && (
-              <>
-                <button
-                  onClick={() => onEdit(char.id)}
-                  className="bg-yellow-500 text-white p-2 rounded hover:bg-yellow-600"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => onSend(char.id)}
-                  className="bg-green-500 text-white p-2 rounded hover:bg-green-600"
-                >
-                  Enviar a Validación
-                </button>
-              </>
-            )}
-            <button
-              onClick={() => onDelete(char.id)}
-              className="bg-red-500 text-white p-2 rounded hover:bg-red-600"
-            >
-              Eliminar
-            </button>
+            <CharacterActionsMenu
+              onEdit={() => onEdit(char._id)}
+              onSend={() => onSend(char._id)}
+              onDelete={() => onDelete(char._id)}
+              disabledEdit={false}
+              disabledSend={!!char.validated}
+            />
           </div>
         </li>
       ))}
