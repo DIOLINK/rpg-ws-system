@@ -32,12 +32,10 @@ router.post('/create', authenticateUser, async (req, res) => {
 router.post('/join/:gameId', authenticateUser, async (req, res) => {
   try {
     const { gameId } = req.params;
-    const { characterName } = req.body;
-
     let games = [];
     if (gameId.length < 24) {
       // Buscar partidas cuyo _id termine con los caracteres dados
-      games = await Game.find({}).lean();
+      games = await Game.find({});
       games = games.filter((g) => g._id.toString().endsWith(gameId));
     } else {
       const game = await Game.findById(gameId);
@@ -62,22 +60,19 @@ router.post('/join/:gameId', authenticateUser, async (req, res) => {
       });
     }
 
-    // Unir al usuario a la única partida encontrada
+    // Unir al usuario a la única partida encontrada (sin personaje)
     const game = games[0];
-    const character = await Character.create({
-      name: characterName,
-      playerId: req.user._id,
-      gameId: game._id,
-      canEdit: false,
-    });
+    // Validar que el usuario no esté ya en la partida
+    if (
+      game.players.some((p) => p.userId.toString() === req.user._id.toString())
+    ) {
+      return res.status(400).json({ error: 'Ya estás en esta partida' });
+    }
+    // Solo agrega el userId, sin characterId
+    game.players.push({ userId: req.user._id });
+    await game.save();
 
-    game.players.push({
-      userId: req.user._id,
-      characterId: character._id,
-    });
-    await Game.findByIdAndUpdate(game._id, { players: game.players });
-
-    res.json({ game, character });
+    res.json({ game });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -111,12 +106,27 @@ router.get('/:gameId', authenticateUser, async (req, res) => {
 
     const game = await Game.findById(gameId)
       .populate('dmId', 'name picture')
-      .populate('players.userId', 'name picture');
+      .populate('players.userId', 'name picture')
+      .populate('players.characterId');
 
-    const characters = await Character.find({ gameId }).populate(
-      'playerId',
-      'name picture'
-    );
+    // Construir lista de personajes asociados a la partida con dueño
+    const characters = game.players
+      .map((p) => {
+        const character = p.characterId;
+        if (!character) return null;
+        return {
+          ...character.toObject(),
+          player: p.userId
+            ? {
+                _id: p.userId._id,
+                name: p.userId.name,
+                email: p.userId.email,
+                picture: p.userId.picture,
+              }
+            : null,
+        };
+      })
+      .filter(Boolean);
 
     res.json({ game, characters });
   } catch (error) {
@@ -183,34 +193,59 @@ router.delete('/characters/:id', async (req, res) => {
 });
 
 // Ruta para asignar un personaje a una partida
-router.post('/games/:gameId/assign-character', async (req, res) => {
-  try {
-    const { gameId } = req.params;
-    const { characterId } = req.body;
+router.post(
+  '/games/:gameId/assign-character',
+  authenticateUser,
+  async (req, res) => {
+    try {
+      const { gameId } = req.params;
+      const { characterId } = req.body;
+      const userId = req.user._id;
 
-    // Lógica para asignar el personaje a la partida
-    const game = await Game.findById(gameId);
-    if (!game) {
-      return res.status(404).json({ error: 'Partida no encontrada' });
+      // Verificar que el personaje pertenece al usuario autenticado
+      const character = await Character.findById(characterId);
+      if (!character) {
+        return res.status(404).json({ error: 'Personaje no encontrado' });
+      }
+      if (character.playerId.toString() !== userId.toString()) {
+        return res
+          .status(403)
+          .json({ error: 'No autorizado para usar este personaje' });
+      }
+
+      // Lógica para asignar el personaje a la partida
+      const game = await Game.findById(gameId);
+      if (!game) {
+        return res.status(404).json({ error: 'Partida no encontrada' });
+      }
+
+      // Verificar si el personaje ya está asignado a la partida
+      if (game.players.some((p) => p.characterId.toString() === characterId)) {
+        return res
+          .status(400)
+          .json({ error: 'El personaje ya está asignado a esta partida' });
+      }
+
+      // Verificar si el usuario ya tiene un personaje en la partida
+      if (game.players.some((p) => p.userId.toString() === userId.toString())) {
+        return res
+          .status(400)
+          .json({ error: 'Ya tienes un personaje en esta partida' });
+      }
+
+      game.players.push({ userId, characterId });
+      await game.save();
+
+      res
+        .status(200)
+        .json({ message: 'Personaje asignado a la partida', game });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: 'Error al asignar el personaje a la partida' });
     }
-
-    // Verificar si el personaje ya está asignado
-    if (game.characters.includes(characterId)) {
-      return res
-        .status(400)
-        .json({ error: 'El personaje ya está asignado a esta partida' });
-    }
-
-    game.characters.push(characterId);
-    await game.save();
-
-    res.status(200).json({ message: 'Personaje asignado a la partida', game });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ error: 'Error al asignar el personaje a la partida' });
   }
-});
+);
 
 // Ruta para obtener las partidas de un usuario
 router.get('/my-games', authenticateUser, async (req, res) => {
@@ -230,6 +265,44 @@ router.get('/my-games', authenticateUser, async (req, res) => {
     res
       .status(500)
       .json({ error: 'Error al obtener las partidas del usuario' });
+  }
+});
+
+// Endpoint para dejar una partida
+router.post('/leave/:gameId', authenticateUser, async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    const userId = req.user._id;
+
+    // Buscar la partida
+    const game = await Game.findById(gameId);
+    if (!game) {
+      return res.status(404).json({ error: 'Partida no encontrada' });
+    }
+
+    // Buscar el jugador en la partida
+    const playerIndex = game.players.findIndex(
+      (p) => p.userId.toString() === userId.toString()
+    );
+    if (playerIndex === -1) {
+      return res.status(400).json({ error: 'No estás en esta partida' });
+    }
+
+    // Obtener el characterId asociado
+    const characterId = game.players[playerIndex].characterId;
+
+    // Quitar al jugador de la partida
+    game.players.splice(playerIndex, 1);
+    await game.save();
+
+    // Opcional: eliminar el personaje asociado a esta partida
+    if (characterId) {
+      await Character.findByIdAndDelete(characterId);
+    }
+
+    res.json({ message: 'Has salido de la partida' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
