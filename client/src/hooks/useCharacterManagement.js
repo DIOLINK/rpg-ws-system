@@ -1,27 +1,3 @@
-// Asociar personaje a partida
-const assignCharacterToGame = async (characterId, gameId) => {
-  try {
-    setLoading(true);
-    await characterService.assignToGame(
-      characterId,
-      gameId,
-      localStorage.getItem('token')
-    );
-    // Refrescar personajes
-    const updated = await characterService.getAll(
-      localStorage.getItem('token')
-    );
-    setCharacters(updated);
-    addToast({
-      type: 'success',
-      message: 'Personaje asociado a la partida y enviado a validación.',
-    });
-  } catch (e) {
-    setError(e.message);
-  } finally {
-    setLoading(false);
-  }
-};
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import useToastStore from '../context/toastStore';
@@ -140,6 +116,31 @@ export const useCharacterManagement = () => {
         localStorage.getItem('token')
       );
       setCharacters(updated);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Asociar personaje a partida
+  const assignCharacterToGame = async (characterId, gameId) => {
+    try {
+      setLoading(true);
+      await characterService.assignToGame(
+        characterId,
+        gameId,
+        localStorage.getItem('token')
+      );
+      // Refrescar personajes
+      const updated = await characterService.getAll(
+        localStorage.getItem('token')
+      );
+      setCharacters(updated);
+      addToast({
+        type: 'success',
+        message: 'Personaje asociado a la partida y enviado a validación.',
+      });
     } catch (e) {
       setError(e.message);
     } finally {
