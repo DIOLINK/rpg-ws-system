@@ -1,9 +1,20 @@
-// Servicio para consumir la API de personajes
-// Todas las peticiones requieren autenticación (token JWT en header)
-
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 export const characterService = {
+  async assignToGame(characterId, gameId, token) {
+    const res = await fetch(
+      `${API_URL}/characters/${characterId}/assign-to-game/${gameId}`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    if (!res.ok)
+      throw new Error(
+        (await res.json()).error || 'Error al asociar personaje a partida'
+      );
+    return res.json();
+  },
   async getAll(token) {
     const res = await fetch(`${API_URL}/characters`, {
       headers: { Authorization: `Bearer ${token}` },

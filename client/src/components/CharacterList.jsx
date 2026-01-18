@@ -6,6 +6,7 @@ const CharacterList = ({
   onEdit,
   onDelete,
   onSend,
+  onAssignToGame,
   currentEditingId,
 }) => {
   if (!characters.length) {
@@ -33,8 +34,10 @@ const CharacterList = ({
               onEdit={() => onEdit(char._id)}
               onSend={() => onSend(char._id)}
               onDelete={() => onDelete(char._id)}
+              onAssignToGame={() => onAssignToGame && onAssignToGame(char._id)}
               disabledEdit={false}
               disabledSend={!!char.validated}
+              disabledAssign={!!char.gameId}
             />
           </div>
         </li>

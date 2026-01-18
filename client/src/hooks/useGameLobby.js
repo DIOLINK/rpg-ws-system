@@ -63,14 +63,13 @@ export const useGameLobby = (user) => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ characterName: `${user.name}'s Character` }),
       });
 
       const data = await response.json();
       if (data.selectGames) {
         setSelectGames(data.selectGames);
       } else if (data.game) {
-        navigate(`/game/${data.game._id}`);
+        navigate(`/assign-character/${data.game._id}`);
       }
     } catch (error) {
       console.error('Error joining game:', error);

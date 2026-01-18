@@ -1,13 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
-import { FaEdit, FaEllipsisV, FaPaperPlane, FaTrash } from 'react-icons/fa';
+import {
+  FaEdit,
+  FaEllipsisV,
+  FaLink,
+  FaPaperPlane,
+  FaTrash,
+} from 'react-icons/fa';
 import useToastStore from '../context/toastStore';
 
 const CharacterActionsMenu = ({
   onEdit,
   onDelete,
   onSend,
+  onAssignToGame,
   disabledEdit,
   disabledSend,
+  disabledAssign,
 }) => {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
@@ -67,6 +75,17 @@ const CharacterActionsMenu = ({
       </button>
       {open && (
         <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 animate-fade-in">
+          <button
+            onClick={() => {
+              setOpen(false);
+              onAssignToGame && onAssignToGame();
+            }}
+            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-blue-100 dark:hover:bg-blue-600 disabled:opacity-50"
+            title="Asociar a partida"
+            disabled={disabledAssign}
+          >
+            <FaLink className="mr-2 text-blue-600" /> Asociar a partida
+          </button>
           <button
             onClick={() => {
               setOpen(false);
