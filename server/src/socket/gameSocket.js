@@ -15,8 +15,11 @@ export const setupGameSockets = (io) => {
       socket.join(`game:${gameId}`);
       console.log(`Usuario ${userId} se unió a la partida ${gameId}`);
 
-      // Notificar a todos en la partida
+      // Notificar a todos en la partida menos al que se une
       socket.to(`game:${gameId}`).emit('player-joined', { userId });
+
+      // Notificar al usuario que se unió (confirmación)
+      socket.emit('joined-game', { gameId, userId });
     });
 
     // DM: Permitir/denegar edición

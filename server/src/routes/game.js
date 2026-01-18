@@ -109,21 +109,32 @@ router.get('/:gameId', authenticateUser, async (req, res) => {
       .populate('players.userId', 'name picture')
       .populate('players.characterId');
 
+    // LOG para depuración: mostrar los players de la partida
+    console.log(
+      'Players en la partida:',
+      JSON.stringify(game.players, null, 2)
+    );
+
     // Construir lista de personajes asociados a la partida con dueño
     const characters = game.players
       .map((p) => {
         const character = p.characterId;
         if (!character) return null;
+        // Fallback: si no hay p.userId pero el character tiene playerId, usarlo
+        let player = null;
+        if (p.userId) {
+          player = {
+            _id: p.userId._id,
+            name: p.userId.name,
+            email: p.userId.email,
+            picture: p.userId.picture,
+          };
+        } else if (character.playerId) {
+          player = { _id: character.playerId };
+        }
         return {
           ...character.toObject(),
-          player: p.userId
-            ? {
-                _id: p.userId._id,
-                name: p.userId.name,
-                email: p.userId.email,
-                picture: p.userId.picture,
-              }
-            : null,
+          player,
         };
       })
       .filter(Boolean);
@@ -220,19 +231,36 @@ router.post(
       }
 
       // Verificar si el personaje ya está asignado a la partida
-      if (game.players.some((p) => p.characterId.toString() === characterId)) {
+      if (
+        game.players.some(
+          (p) => p.characterId && p.characterId.toString() === characterId
+        )
+      ) {
         return res
           .status(400)
           .json({ error: 'El personaje ya está asignado a esta partida' });
       }
 
       // Verificar si el usuario ya tiene un personaje en la partida
-      if (game.players.some((p) => p.userId.toString() === userId.toString())) {
-        return res
-          .status(400)
-          .json({ error: 'Ya tienes un personaje en esta partida' });
+      const playerIndex = game.players.findIndex(
+        (p) => p.userId.toString() === userId.toString()
+      );
+      if (playerIndex !== -1) {
+        // Si ya está pero no tiene characterId, lo actualizamos
+        if (!game.players[playerIndex].characterId) {
+          game.players[playerIndex].characterId = characterId;
+          await game.save();
+          return res
+            .status(200)
+            .json({ message: 'Personaje asignado a la partida', game });
+        } else {
+          return res
+            .status(400)
+            .json({ error: 'Ya tienes un personaje en esta partida' });
+        }
       }
 
+      // Si no está, lo agregamos normalmente
       game.players.push({ userId, characterId });
       await game.save();
 
@@ -240,9 +268,10 @@ router.post(
         .status(200)
         .json({ message: 'Personaje asignado a la partida', game });
     } catch (error) {
-      res
-        .status(500)
-        .json({ error: 'Error al asignar el personaje a la partida' });
+      console.error('Error en /games/:gameId/assign-character:', error);
+      res.status(500).json({
+        error: error.message || 'Error al asignar el personaje a la partida',
+      });
     }
   }
 );
