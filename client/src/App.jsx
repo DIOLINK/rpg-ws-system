@@ -5,6 +5,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { Login } from './components/Login';
 import NavBar from './components/NavBar';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import AssignCharacterPage from './pages/AssignCharacterPage';
 import CreateCharacterPage from './pages/CreateCharacterPage';
 import ErrorPage from './pages/ErrorPage';
 import { GameLobby } from './pages/GameLobby';
@@ -68,6 +69,14 @@ function AppRoutes() {
           element={
             <PrivateRoute>
               <CreateCharacterPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/assign-character/:gameId"
+          element={
+            <PrivateRoute>
+              <AssignCharacterPage />
             </PrivateRoute>
           }
         />
