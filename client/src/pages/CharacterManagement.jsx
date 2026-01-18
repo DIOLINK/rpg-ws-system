@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import AssignToGameModal from '../components/AssignToGameModal';
 import CharacterForm from '../components/CharacterForm';
 import CharacterList from '../components/CharacterList';
 import { useCharacterManagement } from '../hooks/useCharacterManagement';
@@ -18,8 +20,27 @@ const CharacterManagement = () => {
     handleCancel,
   } = useCharacterManagement();
 
+  // Modal para asociar personaje a partida
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [selectedCharacterId, setSelectedCharacterId] = useState(null);
+
+  const handleAssignToGame = (characterId) => {
+    setSelectedCharacterId(characterId);
+    setAssignModalOpen(true);
+  };
+
+  const handleAssignGameId = (gameId) => {
+    if (gameId && selectedCharacterId) {
+      window.location.href = `/game/${gameId}/assign-character`;
+    }
+  };
   return (
     <div className="p-4 max-w-2xl mx-auto">
+      <AssignToGameModal
+        open={assignModalOpen}
+        onClose={() => setAssignModalOpen(false)}
+        onAssign={handleAssignGameId}
+      />
       <h1 className="text-2xl font-bold mb-4">Gestión de Personajes</h1>
       {loading && <div className="mb-4 text-blue-600">Cargando...</div>}
       {/* El error ya se notifica por toast, pero se puede dejar el mensaje visual si se desea */}
@@ -43,6 +64,7 @@ const CharacterManagement = () => {
           onEdit={editCharacter}
           onDelete={deleteCharacter}
           onSend={sendToValidation}
+          onAssignToGame={handleAssignToGame}
           currentEditingId={editingId}
         />
       </div>

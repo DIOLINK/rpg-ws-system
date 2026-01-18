@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { CharacterSheet } from '../components/CharacterSheet';
 import { DMPanel } from '../components/DMPanel';
 import { ErrorMessage } from '../components/ErrorMessage';
@@ -11,16 +11,13 @@ import { CopyButton, MAX_GAMES_DISPLAYED } from './GameLobby';
 const BASE_URL = import.meta.env.VITE_API_URL;
 
 export const GamePage = () => {
+  const navigate = useNavigate();
   const { gameId } = useParams();
   const { user, isDM } = useAuth();
   const { _socket, connected, characters, setCharacters, emit } =
     useGameSocket(gameId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  useEffect(() => {
-    fetchGameData();
-  }, [gameId]);
 
   const fetchGameData = async () => {
     try {
@@ -41,6 +38,25 @@ export const GamePage = () => {
     }
   };
 
+  useEffect(() => {
+    fetchGameData();
+  }, [gameId]);
+
+  // Ahora cada character tiene un campo player con info del usuario dueño
+  const myCharacter = characters.find(
+    (c) => c.player && c.player._id === user._id
+  );
+  const otherCharacters = characters.filter(
+    (c) => !c.player || c.player._id !== user._id
+  );
+
+  // Redirigir a asignación de personaje si el usuario no tiene personaje en la partida y no es DM
+  useEffect(() => {
+    if (!loading && !isDM && !myCharacter) {
+      navigate(`/assign-character/${gameId}`, { replace: true });
+    }
+  }, [loading, isDM, myCharacter, gameId, navigate]);
+
   const handleCharacterUpdate = (updates) => {
     const character = characters.find((c) => c.playerId === user._id);
     if (!character) return;
@@ -54,9 +70,6 @@ export const GamePage = () => {
 
   if (loading) return <Loading />;
   if (error) return <ErrorMessage message={error} />;
-
-  const myCharacter = characters.find((c) => c.playerId === user._id);
-  const otherCharacters = characters.filter((c) => c.playerId !== user._id);
 
   return (
     <div className="min-h-screen bg-gray-900 p-2 sm:p-3 md:p-4 lg:p-6">
@@ -154,7 +167,7 @@ export const GamePage = () => {
                 </h3>
                 <div className="space-y-2">
                   <button
-                    onClick={() => window.location.reload()}
+                    onClick={() => globalThis.location.reload()}
                     className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs sm:text-sm transition-colors"
                   >
                     🔄 Recargar
