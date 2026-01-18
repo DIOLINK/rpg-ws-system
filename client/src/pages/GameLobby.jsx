@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { InputClearable } from '../components/InputClearable';
 import { useAuth } from '../context/AuthContext';
+import useToastStore from '../context/toastStore';
 import { useGameLobby } from '../hooks/useGameLobby';
-
+import { gameService } from '../services/gameService';
 export const MAX_GAMES_DISPLAYED = -6;
 
-import { useState } from 'react';
-import { InputClearable } from '../components/InputClearable';
+import PropTypes from 'prop-types';
 
 export function CopyButton({ id }) {
   const [copied, setCopied] = useState(false);
@@ -31,6 +33,10 @@ export function CopyButton({ id }) {
   );
 }
 
+CopyButton.propTypes = {
+  id: PropTypes.string.isRequired,
+};
+
 export const GameLobby = () => {
   const { user, isDM } = useAuth();
   const navigate = useNavigate();
@@ -40,22 +46,12 @@ export const GameLobby = () => {
     setNewGameName,
     joinCode,
     setJoinCode,
-    loading,
     createGame,
     joinGame,
     games: allGames,
     selectGames,
-    setSelectGames,
   } = useGameLobby(user, isDM);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
-      </div>
-    );
-  }
-
+  const addToast = useToastStore((state) => state.addToast);
   const safeGames = Array.isArray(games) ? games : [];
 
   // Permitir buscar por los últimos 6 caracteres del ID
@@ -69,7 +65,7 @@ export const GameLobby = () => {
 
   return (
     <div className="min-h-screen bg-gray-900 p-3 sm:p-4 md:p-6 lg:p-8">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-gray-800 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 shadow-xl">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -91,7 +87,7 @@ export const GameLobby = () => {
         {/* Acciones principales */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
           {isDM && (
-            <div className="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl hover:shadow-2xl transition-shadow">
+            <div className="w-full bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl hover:shadow-2xl transition-shadow">
               <h2 className="text-lg sm:text-xl font-semibold mb-4 text-purple-400 flex items-center gap-2">
                 🎲 Crear Partida
               </h2>
@@ -110,7 +106,9 @@ export const GameLobby = () => {
               </button>
             </div>
           )}
+        </div>
 
+        {!isDM && (
           <div className="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl hover:shadow-2xl transition-shadow">
             <h2 className="text-lg sm:text-xl font-semibold mb-4 text-blue-400 flex items-center gap-2">
               🔗 Unirse a Partida
@@ -127,58 +125,70 @@ export const GameLobby = () => {
             >
               🔗 Unirse
             </button>
-
-            {/* Modal de selección de partidas */}
-            {selectGames && (
-              <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                <div className="bg-gray-800 rounded-lg p-6 shadow-2xl max-w-md w-full">
-                  <h3 className="text-lg font-semibold mb-4 text-purple-400">
-                    Selecciona la partida
-                  </h3>
-                  <ul className="space-y-3 mb-4">
-                    {selectGames.map((g) => (
-                      <li
-                        key={g._id}
-                        className="flex items-center justify-between bg-gray-700 rounded p-3"
-                      >
-                        <div>
-                          <span className="font-bold text-sm text-white">
-                            {g.name}
-                          </span>
-                          <span className="ml-2 text-xs px-2 py-1 rounded-full bg-green-600/50">
-                            {g.isActive ? 'Activa' : 'Finalizada'}
-                          </span>
-                        </div>
-                        <button
-                          className="ml-4 px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
-                          onClick={() => {
-                            setSelectGames(null);
-                            joinGame(g._id);
-                          }}
-                        >
-                          Unirse
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    className="w-full py-2 bg-gray-600 hover:bg-gray-500 rounded-lg text-sm text-white font-semibold"
-                    onClick={() => setSelectGames(null)}
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
-        </div>
+        )}
+
+        {/* Modal de selección de partidas */}
+        {selectGames && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg p-6 shadow-2xl max-w-md w-full">
+              <h3 className="text-lg font-semibold mb-4 text-purple-400">
+                Selecciona la partida
+              </h3>
+              <ul className="space-y-3 mb-4">
+                {selectGames.map((g) => (
+                  <li
+                    key={g._id}
+                    className="flex items-center justify-between bg-gray-700 rounded p-3"
+                  >
+                    <span className="font-bold text-sm text-white">
+                      {g.name}
+                    </span>
+                    <button
+                      className="ml-2 px-3 py-2 bg-red-700 hover:bg-red-800 rounded-lg text-xs sm:text-sm text-white font-semibold transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addToast({
+                          type: 'warning',
+                          message: '¿Seguro que quieres salir de la partida?',
+                          action: {
+                            label: 'Salir',
+                            onClick: async () => {
+                              try {
+                                await gameService.leaveGame(
+                                  g._id,
+                                  localStorage.getItem('token')
+                                );
+                                globalThis.location.reload();
+                              } catch (err) {
+                                addToast({
+                                  type: 'error',
+                                  message: err.message,
+                                });
+                              }
+                            },
+                          },
+                          cancel: {
+                            label: 'Cancelar',
+                          },
+                        });
+                      }}
+                    >
+                      Salir de la partida
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
 
         {/* Mis partidas */}
-        <div className="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl">
+        <div className="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl mt-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg sm:text-xl font-semibold">Mis Partidas</h2>
             <span className="text-xs sm:text-sm text-gray-400">
-              {safeGames.length} partida{safeGames.length !== 1 ? 's' : ''}
+              {safeGames.length} partida{safeGames.length === 1 ? '' : 's'}
             </span>
           </div>
 
@@ -197,13 +207,17 @@ export const GameLobby = () => {
               {safeGames.map((game) => (
                 <div
                   key={game._id}
-                  className="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors cursor-pointer shadow-lg hover:shadow-xl"
-                  onClick={() => navigate(`/game/${game._id}`)}
+                  className="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors cursor-pointer shadow-lg hover:shadow-xl group"
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold text-sm sm:text-base truncate flex-1">
+                    <button
+                      type="button"
+                      className="font-semibold text-sm sm:text-base truncate flex-1 text-left focus:outline-none focus:ring-2 focus:ring-purple-400"
+                      onClick={() => navigate(`/game/${game._id}`)}
+                      aria-label={`Ir a la partida ${game.name}`}
+                    >
                       {game.name}
-                    </h3>
+                    </button>
                     <span
                       className={`ml-2 text-xs px-2 py-1 rounded-full ${
                         game.isActive ? 'bg-green-600/50' : 'bg-gray-600/50'
@@ -222,6 +236,46 @@ export const GameLobby = () => {
                       <CopyButton id={game._id} />
                     </span>
                   </div>
+                  <button
+                    className="mt-3 w-full py-2 bg-red-700 hover:bg-red-800 rounded-lg text-xs sm:text-sm text-white font-semibold transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addToast({
+                        type: 'warning',
+                        message: '¿Seguro que quieres salir de la partida?',
+                        actions: [
+                          {
+                            label: 'Salir',
+                            variant: 'danger',
+                            onClick: async (toastId) => {
+                              try {
+                                await gameService.leaveGame(
+                                  game._id,
+                                  localStorage.getItem('token')
+                                );
+                                globalThis.location.reload();
+                              } catch (err) {
+                                addToast({
+                                  type: 'error',
+                                  message: err.message,
+                                });
+                              }
+                            },
+                          },
+                          {
+                            label: 'Cancelar',
+                            variant: 'secondary',
+                            onClick: (toastId) => {
+                              // Solo cierra el toast
+                              useToastStore.getState().removeToast(toastId);
+                            },
+                          },
+                        ],
+                      });
+                    }}
+                  >
+                    Salir de la partida
+                  </button>
                 </div>
               ))}
             </div>
