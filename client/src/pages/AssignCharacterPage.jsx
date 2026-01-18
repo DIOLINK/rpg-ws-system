@@ -18,8 +18,24 @@ export default function AssignCharacterPage() {
 
   const handleAssign = async (characterId) => {
     // Llama al nuevo endpoint backend usando user autenticado
-    await assignCharacterToGame(characterId, gameId);
-    navigate(`/game/${gameId}`);
+    try {
+      await assignCharacterToGame(characterId, gameId);
+      // Mostrar toast de éxito
+      import('../context/toastStore').then(({ default: useToastStore }) => {
+        useToastStore.getState().addToast({
+          type: 'success',
+          message: '¡Personaje asociado correctamente a la partida!',
+        });
+      });
+      navigate(`/game/${gameId}`);
+    } catch (e) {
+      import('../context/toastStore').then(({ default: useToastStore }) => {
+        useToastStore.getState().addToast({
+          type: 'error',
+          message: e.message || 'Error al asociar personaje',
+        });
+      });
+    }
   };
 
   return (

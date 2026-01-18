@@ -3,10 +3,14 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 export const characterService = {
   async assignToGame(characterId, gameId, token) {
     const res = await fetch(
-      `${API_URL}/characters/${characterId}/assign-to-game/${gameId}`,
+      `${API_URL}/game/games/${gameId}/assign-character`,
       {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ characterId }),
       }
     );
     if (!res.ok)

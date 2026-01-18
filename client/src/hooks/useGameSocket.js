@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { authService } from '../utils/authService';
 
-export const useGameSocket = (gameId) => {
+export const useGameSocket = (gameId, onJoinedGame) => {
   const socket = useRef(null);
   const [connected, setConnected] = useState(false);
   const [characters, setCharacters] = useState([]);
   const [game, setGame] = useState(null);
 
+  // ...existing code...
   useEffect(() => {
     const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:5001';
     if (!gameId) return;
@@ -25,6 +26,14 @@ export const useGameSocket = (gameId) => {
 
     socket.current.on('disconnect', () => {
       setConnected(false);
+    });
+
+    // Evento de confirmación de unión a la partida
+    socket.current.on('joined-game', ({ gameId, userId }) => {
+      console.log(`Te has unido a la partida ${gameId} como ${userId}`);
+      if (typeof onJoinedGame === 'function') {
+        onJoinedGame();
+      }
     });
 
     // Eventos de personaje

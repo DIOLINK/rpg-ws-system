@@ -14,11 +14,10 @@ export const GamePage = () => {
   const navigate = useNavigate();
   const { gameId } = useParams();
   const { user, isDM } = useAuth();
-  const { _socket, connected, characters, setCharacters, emit } =
-    useGameSocket(gameId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Definir fetchGameData antes de usar useGameSocket
   const fetchGameData = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -37,6 +36,11 @@ export const GamePage = () => {
       setLoading(false);
     }
   };
+
+  const { _socket, connected, characters, setCharacters, emit } = useGameSocket(
+    gameId,
+    fetchGameData
+  );
 
   useEffect(() => {
     fetchGameData();
