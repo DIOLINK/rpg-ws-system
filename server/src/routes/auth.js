@@ -58,7 +58,7 @@ router.post('/google', async (req, res) => {
     const jwtToken = jwt.sign(
       { id: user._id, googleId: user.googleId, email: user.email },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '7d' },
     );
     res.json({
       message: 'Autenticación exitosa',
@@ -95,6 +95,66 @@ router.get('/me', authenticateUser, async (req, res) => {
     isDM: user.isDM,
     // Puedes agregar más campos si lo deseas
   });
+});
+
+// =========================
+// Endpoint para refrescar el token de acceso usando un refresh token de Firebase
+// =========================
+router.post('/refresh', async (req, res) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) {
+    return res.status(400).json({ message: 'Refresh token requerido' });
+  }
+  try {
+    // Usar el endpoint de Firebase para intercambiar el refresh token por un nuevo idToken
+    const response = await fetch(
+      'https://securetoken.googleapis.com/v1/token?key=' +
+        process.env.FIREBASE_API_KEY,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+        }),
+      },
+    );
+    const data = await response.json();
+    if (!data.id_token) {
+      return res.status(401).json({ message: 'Refresh token inválido' });
+    }
+    // Decodificar el nuevo idToken
+    const decodedToken = await admin.auth().verifyIdToken(data.id_token);
+    const googleId =
+      decodedToken.uid || decodedToken.sub || decodedToken.user_id;
+    let user = await User.findOne({ googleId });
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+    // Generar un nuevo JWT propio
+    const jwtToken = jwt.sign(
+      { id: user._id, googleId: user.googleId, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' },
+    );
+    res.json({
+      message: 'Token refrescado',
+      token: jwtToken,
+      firebaseIdToken: data.id_token,
+      user: {
+        _id: user._id,
+        uid: user.googleId,
+        displayName: user.name,
+        email: user.email,
+        emailVerified: true,
+        photoURL: user.picture,
+        isDM: user.isDM,
+      },
+    });
+  } catch (error) {
+    console.error('Error refrescando token:', error);
+    res.status(500).json({ message: 'Error refrescando token' });
+  }
 });
 
 export default router;
