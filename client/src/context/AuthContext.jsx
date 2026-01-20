@@ -2,6 +2,7 @@
 import PropTypes from 'prop-types';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { apiFetch } from '../utils/apiFetch';
 import { authService } from '../utils/authService';
 
 const AuthContext = createContext();
@@ -36,18 +37,22 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUser = async (token) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await apiFetch(
+        `${import.meta.env.VITE_API_URL}/auth/me`,
+        { headers: { Authorization: `Bearer ${token}` } },
+        logout,
+      );
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
       } else {
         localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
       }
     } catch (error) {
       console.error('Error fetching user:', error);
       localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
     } finally {
       setLoading(false);
     }
@@ -67,6 +72,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     setUser(null);
   };
 
@@ -78,7 +84,7 @@ export const AuthProvider = ({ children }) => {
       loading,
       isDM: user?.isDM || false,
     }),
-    [user, loading]
+    [user, loading],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

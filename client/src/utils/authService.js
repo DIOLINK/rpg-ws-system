@@ -8,10 +8,11 @@ export const signInWithGoogle = async () => {
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
     const token = await user.getIdToken();
-
+    // Guardar el refreshToken de Firebase
+    const refreshToken = user.refreshToken;
+    localStorage.setItem('refreshToken', refreshToken);
     // console.log('Token generado en el cliente:', token);
-
-    return { user, token };
+    return { user, token, refreshToken };
   } catch (error) {
     if (error.code === 'auth/popup-closed-by-user') {
       console.error('El usuario canceló el inicio de sesión.');
@@ -25,7 +26,7 @@ export const signInWithGoogle = async () => {
 const authService = {
   loginWithGoogle: async () => {
     try {
-      const { token } = await signInWithGoogle();
+      const { token, refreshToken } = await signInWithGoogle();
 
       // Enviar el token al backend para validación/registro y obtener el usuario en formato Firebase
       const response = await fetch(
@@ -36,7 +37,7 @@ const authService = {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ token }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -44,15 +45,17 @@ const authService = {
       }
 
       const data = await response.json();
-      // Guardar el token de Google, no el del backend
+      // Guardar el token de Google y el refreshToken
       localStorage.setItem('token', token);
-      return { user: data.user, token };
+      if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
+      return { user: data.user, token, refreshToken };
     } catch (error) {
       console.error('Error en loginWithGoogle:', error);
       throw error;
     }
   },
   getToken: () => localStorage.getItem('token'),
+  getRefreshToken: () => localStorage.getItem('refreshToken'),
 };
 
 export { authService };

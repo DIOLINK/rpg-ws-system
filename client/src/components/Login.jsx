@@ -14,7 +14,6 @@ export const Login = () => {
     try {
       const { user, token } = await signInWithGoogle();
       await login(token); // Actualizar el estado del usuario en el contexto
-      console.log('User signed in:', user);
     } catch (err) {
       console.error(err);
       if (err.message === 'Inicio de sesión cancelado por el usuario.') {
