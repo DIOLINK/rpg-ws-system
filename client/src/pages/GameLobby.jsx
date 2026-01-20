@@ -157,7 +157,7 @@ export const GameLobby = () => {
                               try {
                                 await gameService.leaveGame(
                                   g._id,
-                                  localStorage.getItem('token')
+                                  localStorage.getItem('token'),
                                 );
                                 globalThis.location.reload();
                               } catch (err) {
@@ -205,19 +205,28 @@ export const GameLobby = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {safeGames.map((game) => (
-                <div
+                <button
                   key={game._id}
-                  className="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors cursor-pointer shadow-lg hover:shadow-xl group"
+                  type="button"
+                  className="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors cursor-pointer shadow-lg hover:shadow-xl group text-left w-full focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  onClick={() => navigate(`/game/${game._id}`)}
+                  aria-label={`Ir a la partida ${game.name}`}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/game/${game._id}`);
+                    }
+                  }}
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <button
-                      type="button"
-                      className="font-semibold text-sm sm:text-base truncate flex-1 text-left focus:outline-none focus:ring-2 focus:ring-purple-400"
-                      onClick={() => navigate(`/game/${game._id}`)}
+                    <p
+                      className="font-semibold text-sm sm:text-base truncate flex-1 text-left"
+                      title={game.name}
                       aria-label={`Ir a la partida ${game.name}`}
                     >
                       {game.name}
-                    </button>
+                    </p>
                     <span
                       className={`ml-2 text-xs px-2 py-1 rounded-full ${
                         game.isActive ? 'bg-green-600/50' : 'bg-gray-600/50'
@@ -229,7 +238,7 @@ export const GameLobby = () => {
                   <div className="flex items-center justify-between text-xs sm:text-sm text-gray-400">
                     <span>
                       {game.players.length} jugador
-                      {game.players.length !== 1 ? 'es' : ''}
+                      {game.players.length === 1 ? '' : 'es'}
                     </span>
                     <span className="flex items-center gap-1">
                       ID: {game._id.slice(MAX_GAMES_DISPLAYED)}
@@ -251,7 +260,7 @@ export const GameLobby = () => {
                               try {
                                 await gameService.leaveGame(
                                   game._id,
-                                  localStorage.getItem('token')
+                                  localStorage.getItem('token'),
                                 );
                                 globalThis.location.reload();
                               } catch (err) {
@@ -276,7 +285,7 @@ export const GameLobby = () => {
                   >
                     Salir de la partida
                   </button>
-                </div>
+                </button>
               ))}
             </div>
           )}
