@@ -16,6 +16,10 @@ export async function apiFetch(url, options = {}, logoutCallback) {
   if (token) {
     options.headers['Authorization'] = `Bearer ${token}`;
   }
+  // Si hay body y no se ha definido Content-Type, poner application/json
+  if (options.body && !options.headers['Content-Type']) {
+    options.headers['Content-Type'] = 'application/json';
+  }
 
   let response = await fetch(url, options);
 

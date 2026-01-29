@@ -69,7 +69,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
       const data = await getNPCTemplates();
       setTemplates(Array.isArray(data) ? data : []);
     } catch (error) {
-      addToast('Error al cargar plantillas', 'error');
+      addToast({ message: 'Error al cargar plantillas', type: 'error' });
     }
   }, [addToast]);
 
@@ -107,14 +107,14 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
     try {
       const npc = await spawnNPC(gameId, template._id);
       setActiveNPCs([...activeNPCs, npc]);
-      addToast(`${npc.name} ha aparecido`, 'success');
+      addToast({ message: `${npc.name} ha aparecido`, type: 'success' });
       // Notificar via socket
       if (socket) {
         socket.emit('npc:spawned', { gameId, npc });
       }
       if (onRefresh) onRefresh();
     } catch (error) {
-      addToast('Error al crear NPC', 'error');
+      addToast({ message: 'Error al crear NPC', type: 'error' });
     }
   };
 
@@ -125,7 +125,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
       setLootData({ npc, ...result });
       setShowLootModal(true);
       await loadActiveNPCs();
-      addToast(`${npc.name} ha muerto`, 'info');
+      addToast({ message: `${npc.name} ha muerto`, type: 'info' });
       // Notificar via socket para actualizar orden de turnos
       if (socket) {
         socket.emit('npc:killed', {
@@ -136,7 +136,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
       }
       if (onRefresh) onRefresh();
     } catch (error) {
-      addToast('Error al matar NPC', 'error');
+      addToast({ message: 'Error al matar NPC', type: 'error' });
     }
   };
 
@@ -146,14 +146,14 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
     try {
       await deleteNPC(npc._id);
       setActiveNPCs(activeNPCs.filter((n) => n._id !== npc._id));
-      addToast(`${npc.name} eliminado`, 'info');
+      addToast({ message: `${npc.name} eliminado`, type: 'info' });
       // Notificar via socket
       if (socket) {
         socket.emit('npc:deleted', { gameId, npcId: npc._id });
       }
       if (onRefresh) onRefresh();
     } catch (error) {
-      addToast('Error al eliminar NPC', 'error');
+      addToast({ message: 'Error al eliminar NPC', type: 'error' });
     }
   };
 
@@ -161,16 +161,19 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
   const handleAddToTurnOrder = (npc) => {
     if (socket) {
       socket.emit('dm:add-to-turn-order', { gameId, characterId: npc._id });
-      addToast(`${npc.name} añadido al orden de turnos`, 'success');
+      addToast({
+        message: `${npc.name} añadido al orden de turnos`,
+        type: 'success',
+      });
     } else {
-      addToast('Error: Socket no disponible', 'error');
+      addToast({ message: 'Error: Socket no disponible', type: 'error' });
     }
   };
 
   // Crear nueva plantilla
   const handleCreateTemplate = async () => {
     if (!newTemplate.name.trim()) {
-      addToast('El nombre es requerido', 'warning');
+      addToast({ message: 'El nombre es requerido', type: 'warning' });
       return;
     }
     try {
@@ -198,26 +201,29 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
         abilities: [],
         inventory: [],
       });
-      addToast('Plantilla creada', 'success');
+      addToast({ message: 'Plantilla creada', type: 'success' });
       setActiveTab('spawn');
     } catch (error) {
-      addToast('Error al crear plantilla', 'error');
+      addToast({ message: 'Error al crear plantilla', type: 'error' });
     }
   };
 
   // Eliminar plantilla
   const handleDeleteTemplate = async (template) => {
     if (template.isGlobal) {
-      addToast('No puedes eliminar plantillas globales', 'warning');
+      addToast({
+        message: 'No puedes eliminar plantillas globales',
+        type: 'warning',
+      });
       return;
     }
     if (!confirm(`¿Eliminar plantilla ${template.name}?`)) return;
     try {
       await deleteNPCTemplate(template._id);
       setTemplates(templates.filter((t) => t._id !== template._id));
-      addToast('Plantilla eliminada', 'info');
+      addToast({ message: 'Plantilla eliminada', type: 'info' });
     } catch (error) {
-      addToast('Error al eliminar plantilla', 'error');
+      addToast({ message: 'Error al eliminar plantilla', type: 'error' });
     }
   };
 
@@ -231,12 +237,12 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
         lootData.loot.items,
         lootData.loot.gold,
       );
-      addToast('Loot entregado', 'success');
+      addToast({ message: 'Loot entregado', type: 'success' });
       setShowLootModal(false);
       setLootData(null);
       if (onRefresh) onRefresh();
     } catch (error) {
-      addToast('Error al dar loot', 'error');
+      addToast({ message: 'Error al dar loot', type: 'error' });
     }
   };
 
