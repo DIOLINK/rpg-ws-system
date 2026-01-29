@@ -4,66 +4,75 @@ import { apiFetch } from '../utils/apiFetch';
 
 // Obtener todas las plantillas de NPC
 export const getNPCTemplates = async () => {
-  return apiFetch('/api/npc/templates');
+  const res = await apiFetch('/api/npc/templates');
+  return res.json();
 };
 
 // Crear nueva plantilla
 export const createNPCTemplate = async (templateData) => {
-  return apiFetch('/api/npc/templates', {
+  const res = await apiFetch('/api/npc/templates', {
     method: 'POST',
     body: JSON.stringify(templateData),
   });
+  return res.json();
 };
 
 // Actualizar plantilla
 export const updateNPCTemplate = async (templateId, templateData) => {
-  return apiFetch(`/api/npc/templates/${templateId}`, {
+  const res = await apiFetch(`/api/npc/templates/${templateId}`, {
     method: 'PUT',
     body: JSON.stringify(templateData),
   });
+  return res.json();
 };
 
 // Eliminar plantilla
 export const deleteNPCTemplate = async (templateId) => {
-  return apiFetch(`/api/npc/templates/${templateId}`, {
+  const res = await apiFetch(`/api/npc/templates/${templateId}`, {
     method: 'DELETE',
   });
+  return res.json();
 };
 
 // === NPCs EN PARTIDA ===
 
 // Crear NPC en una partida
 export const spawnNPC = async (gameId, templateId, customData = null) => {
-  return apiFetch('/api/npc/spawn', {
+  const res = await apiFetch('/api/npc/spawn', {
     method: 'POST',
     body: JSON.stringify({ gameId, templateId, customData }),
   });
+  return res.json();
 };
 
 // Obtener NPCs de una partida
 export const getGameNPCs = async (gameId) => {
-  return apiFetch(`/api/npc/game/${gameId}`);
+  const res = await apiFetch(`/api/npc/game/${gameId}`);
+  return res.json();
 };
 
 // Matar NPC
 export const killNPC = async (npcId, distributeExpTo = []) => {
-  return apiFetch(`/api/npc/${npcId}/kill`, {
+  const res = await apiFetch(`/api/npc/${npcId}/kill`, {
     method: 'POST',
     body: JSON.stringify({ distributeExpTo }),
   });
+  return res.json();
 };
 
 // Eliminar NPC
 export const deleteNPC = async (npcId) => {
-  return apiFetch(`/api/npc/${npcId}`, {
+  const res = await apiFetch(`/api/npc/${npcId}`, {
     method: 'DELETE',
   });
+  return res.json();
 };
 
 // Dar loot a un personaje
 export const giveLoot = async (npcId, characterId, items, gold) => {
-  return apiFetch(`/api/npc/${npcId}/give-loot`, {
+  const res = await apiFetch(`/api/npc/${npcId}/give-loot`, {
     method: 'POST',
     body: JSON.stringify({ characterId, items, gold }),
   });
+  return res.json();
 };

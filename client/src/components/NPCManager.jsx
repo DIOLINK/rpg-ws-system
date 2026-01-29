@@ -4,7 +4,6 @@ import {
   createNPCTemplate,
   deleteNPC,
   deleteNPCTemplate,
-  getGameNPCs,
   getNPCTemplates,
   giveLoot,
   killNPC,
@@ -77,7 +76,17 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
   const loadActiveNPCs = useCallback(async () => {
     if (!gameId) return;
     try {
-      const data = await getGameNPCs(gameId);
+      const res = await fetch(`/api/npc/game/${gameId}`);
+      console.log('🚀 ~ NPCManager ~ res:', res.json());
+
+      let data;
+      try {
+        data = JSON.parse(res);
+      } catch (e) {
+        console.error('Respuesta no es JSON válido:', res);
+        setActiveNPCs([]);
+        return;
+      }
       setActiveNPCs(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error loading NPCs:', error);

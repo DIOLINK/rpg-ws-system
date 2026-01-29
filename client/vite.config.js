@@ -11,6 +11,13 @@ export default defineConfig({
     hmr: {
       overlay: false, // Desactiva la superposición de errores
     },
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5001',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   build: {
     sourcemap: false, // Deshabilitar mapas de origen en producción
