@@ -169,8 +169,13 @@ export const setupGameSockets = (io) => {
     socket.on('join-user-channel', async () => {
       const user = await getCurrentUser();
       if (user) {
-        socket.join(`user:${user._id}`);
-        console.log(`👤 Usuario ${user.name} unido a su canal personal`);
+        const channelName = `user:${user._id}`;
+        socket.join(channelName);
+        console.log(
+          `👤 Usuario ${user.name} unido a su canal personal: ${channelName}`,
+        );
+      } else {
+        console.log('❌ No se pudo unir al canal: usuario no encontrado');
       }
     });
 
@@ -631,6 +636,7 @@ export const setupGameSockets = (io) => {
     socket.on('join-game', async ({ gameId, userId }) => {
       socket.join(`game:${gameId}`);
       console.log(`Usuario ${userId} se unió a la partida ${gameId}`);
+      console.log(`Rooms del socket ${socket.id}:`, Array.from(socket.rooms));
 
       // Notificar a todos en la partida menos al que se une
       socket.to(`game:${gameId}`).emit('player-joined', { userId });
@@ -658,7 +664,92 @@ export const setupGameSockets = (io) => {
         canEdit,
         updatedBy: 'dm',
       });
+
+      // También emitir al canal personal del propietario
+      io.to(`user:${character.playerId}`).emit('character-updated', {
+        characterId,
+        canEdit,
+        updatedBy: 'dm',
+      });
     });
+
+    // DM: Actualizar stats/datos de un personaje
+    socket.on(
+      'dm:update-character',
+      async ({ characterId, updates, gameId }) => {
+        if (!(await isDM(socket, gameId))) {
+          socket.emit('error', { message: 'No autorizado' });
+          return;
+        }
+
+        try {
+          const character = await Character.findById(characterId);
+          if (!character) {
+            socket.emit('error', { message: 'Personaje no encontrado' });
+            return;
+          }
+
+          // Actualizar nombre si se proporciona
+          if (updates.name) {
+            character.name = updates.name;
+          }
+
+          // Actualizar clase si se proporciona
+          if (updates.classType) {
+            character.classType = updates.classType;
+          }
+
+          // Actualizar nivel si se proporciona
+          if (updates.level !== undefined) {
+            character.level = updates.level;
+          }
+
+          // Actualizar descripción si se proporciona
+          if (updates.description !== undefined) {
+            character.description = updates.description;
+          }
+
+          // Actualizar stats si se proporcionan (incluye HP, maxHp, mana, maxMana)
+          if (updates.stats) {
+            character.stats = {
+              ...character.stats,
+              ...updates.stats,
+            };
+          }
+
+          character.updatedAt = new Date();
+          await character.save();
+
+          const updatePayload = {
+            characterId,
+            name: character.name,
+            classType: character.classType,
+            level: character.level,
+            description: character.description,
+            stats: character.stats,
+            updatedBy: 'dm',
+          };
+
+          // Emitir a todos en la partida
+          console.log(`📤 Emitiendo character-updated a game:${gameId}`);
+          io.to(`game:${gameId}`).emit('character-updated', updatePayload);
+
+          // También emitir al canal personal del propietario
+          const userChannel = `user:${character.playerId}`;
+          console.log(
+            `📤 Emitiendo character-updated (DM edit) a: ${userChannel}`,
+          );
+          io.to(userChannel).emit('character-updated', updatePayload);
+
+          console.log(
+            `✅ DM actualizó personaje ${character.name}`,
+            updatePayload,
+          );
+        } catch (error) {
+          socket.emit('error', { message: error.message });
+        }
+      },
+    );
 
     // DM: Validar/Rechazar personaje
     socket.on(
@@ -702,7 +793,11 @@ export const setupGameSockets = (io) => {
           });
 
           // También emitir al canal personal del propietario del personaje
-          io.to(`user:${character.playerId}`).emit('character-validated', {
+          const userChannel = `user:${character.playerId}`;
+          console.log(
+            `📤 Emitiendo character-validated a canal: ${userChannel}`,
+          );
+          io.to(userChannel).emit('character-validated', {
             characterId,
             validated,
             comment: comment || '',
@@ -741,6 +836,13 @@ export const setupGameSockets = (io) => {
         ability,
         updatedBy: 'dm',
       });
+
+      // También emitir al canal personal del propietario
+      io.to(`user:${character.playerId}`).emit('ability-added', {
+        characterId,
+        ability,
+        updatedBy: 'dm',
+      });
     });
 
     // DM: Eliminar habilidad
@@ -761,6 +863,13 @@ export const setupGameSockets = (io) => {
         await character.save();
 
         io.to(`game:${gameId}`).emit('ability-removed', {
+          characterId,
+          abilityId,
+          updatedBy: 'dm',
+        });
+
+        // También emitir al canal personal del propietario
+        io.to(`user:${character.playerId}`).emit('ability-removed', {
           characterId,
           abilityId,
           updatedBy: 'dm',
@@ -812,6 +921,17 @@ export const setupGameSockets = (io) => {
           updates,
           updatedBy: 'dm',
         });
+
+        // También emitir al canal personal de cada personaje afectado
+        for (const update of updates) {
+          const character = await Character.findById(update.characterId);
+          if (character) {
+            io.to(`user:${character.playerId}`).emit('damage-applied', {
+              updates: [update],
+              updatedBy: 'dm',
+            });
+          }
+        }
       },
     );
 
@@ -862,6 +982,18 @@ export const setupGameSockets = (io) => {
           koWarning: character.koWarning,
           isKO: character.isKO,
         });
+
+        // También emitir al canal personal del propietario
+        io.to(`user:${character.playerId}`).emit('hp-modified', {
+          characterId,
+          oldHp,
+          newHp,
+          maxHp: character.stats.maxHp,
+          change: newHp - oldHp,
+          reason: reason || (amount > 0 ? 'curación' : 'daño'),
+          koWarning: character.koWarning,
+          isKO: character.isKO,
+        });
       } catch (error) {
         socket.emit('error', { message: error.message });
       }
@@ -896,6 +1028,16 @@ export const setupGameSockets = (io) => {
           await character.save();
 
           io.to(`game:${gameId}`).emit('mana-modified', {
+            characterId,
+            oldMana,
+            newMana,
+            maxMana: character.stats.maxMana,
+            change: newMana - oldMana,
+            reason: reason || (amount > 0 ? 'recuperación' : 'gasto'),
+          });
+
+          // También emitir al canal personal del propietario
+          io.to(`user:${character.playerId}`).emit('mana-modified', {
             characterId,
             oldMana,
             newMana,
@@ -995,6 +1137,13 @@ export const setupGameSockets = (io) => {
         status: newStatus,
         updatedBy: 'dm',
       });
+
+      // También emitir al canal personal del propietario
+      io.to(`user:${character.playerId}`).emit('status-added', {
+        characterId,
+        status: newStatus,
+        updatedBy: 'dm',
+      });
     });
 
     // DM: Eliminar estado
@@ -1011,6 +1160,13 @@ export const setupGameSockets = (io) => {
       await character.save();
 
       io.to(`game:${gameId}`).emit('status-removed', {
+        characterId,
+        statusId,
+        updatedBy: 'dm',
+      });
+
+      // También emitir al canal personal del propietario
+      io.to(`user:${character.playerId}`).emit('status-removed', {
         characterId,
         statusId,
         updatedBy: 'dm',
