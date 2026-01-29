@@ -23,7 +23,7 @@ export const DMPanel = ({ characters, onDMCommand }) => {
     setSelectedCharacters((prev) =>
       prev.includes(characterId)
         ? prev.filter((id) => id !== characterId)
-        : [...prev, characterId]
+        : [...prev, characterId],
     );
   };
 
@@ -68,9 +68,9 @@ export const DMPanel = ({ characters, onDMCommand }) => {
             {pendingCharacters.map((char) => (
               <div
                 key={char._id}
-                className="bg-gray-700 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+                className="bg-gray-700 rounded-lg p-3 flex flex-col gap-3"
               >
-                <div>
+                <div className="text-center">
                   <span className="font-medium text-base text-white">
                     {char.name}
                   </span>
@@ -87,9 +87,9 @@ export const DMPanel = ({ characters, onDMCommand }) => {
                     {char.description}
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-3 justify-center">
                   <button
-                    className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-xs font-semibold text-white"
+                    className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-semibold text-white flex items-center gap-2 transition-colors shadow-md"
                     onClick={() =>
                       onDMCommand('validate-character', {
                         characterId: char._id,
@@ -97,10 +97,10 @@ export const DMPanel = ({ characters, onDMCommand }) => {
                       })
                     }
                   >
-                    ✅ Aprobar
+                    <span className="text-lg">✓</span> Aprobar
                   </button>
                   <button
-                    className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-xs font-semibold text-white"
+                    className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-semibold text-white flex items-center gap-2 transition-colors shadow-md"
                     onClick={() =>
                       onDMCommand('validate-character', {
                         characterId: char._id,
@@ -108,7 +108,7 @@ export const DMPanel = ({ characters, onDMCommand }) => {
                       })
                     }
                   >
-                    ❌ Rechazar
+                    <span className="text-lg">✗</span> Rechazar
                   </button>
                 </div>
               </div>

@@ -327,131 +327,126 @@ export const CharacterSheet = ({
               )}
             </div>
           </div>
-          <div className="w-full bg-gray-700 rounded-full h-4 overflow-hidden">
-            <div
-              className="bg-blue-500 h-full transition-all duration-500"
-              style={{ width: `${manaPercentage}%` }}
-            />
-          </div>
-        </div>
 
-        {/* Stats principales */}
-        <CharacterStats
-          stats={formData}
-          editing={editing && isDM}
-          onChange={({ name, value }) =>
-            setFormData((prev) => ({ ...prev, [name]: value }))
-          }
-        />
+          {/* Stats principales */}
+          <CharacterStats
+            stats={formData}
+            editing={editing && isDM}
+            onChange={({ name, value }) =>
+              setFormData((prev) => ({ ...prev, [name]: value }))
+            }
+          />
 
-        {/* Habilidades */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-base font-semibold text-purple-400">
-              {CLASS_ICONS[character.classType] || CLASS_ICONS.default}
-              Habilidades
-            </h3>
-            <span className="text-xs text-gray-400">
-              {character.abilities?.length || 0} habilidades
-            </span>
-          </div>
-          {(() => {
-            const abilitiesToShow =
-              character.abilities && character.abilities.length > 0
-                ? character.abilities
-                : classAbilities;
-            return abilitiesToShow.length > 0 ? (
-              <AccordionList
-                items={abilitiesToShow.map((ability) => ({
-                  id: ability.id,
-                  title: ability.name,
-                  subtitle:
-                    ability.manaCost > 0 ? `💙 ${ability.manaCost}` : '',
-                  icon: CLASS_ICONS[character.classType] || CLASS_ICONS.default,
-                  content: (
-                    <div>
-                      <div className="text-xs text-gray-400 mb-1">
-                        {ability.description}
-                      </div>
-                      {ability.damage && (
-                        <div className="text-xs text-orange-400 mb-1">
-                          Daño: {ability.damage}
+          {/* Habilidades */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-semibold text-purple-400">
+                {CLASS_ICONS[character.classType] || CLASS_ICONS.default}
+                Habilidades
+              </h3>
+              <span className="text-xs text-gray-400">
+                {character.abilities?.length || 0} habilidades
+              </span>
+            </div>
+            {(() => {
+              const abilitiesToShow =
+                character.abilities && character.abilities.length > 0
+                  ? character.abilities
+                  : classAbilities;
+              return abilitiesToShow.length > 0 ? (
+                <AccordionList
+                  items={abilitiesToShow.map((ability) => ({
+                    id: ability.id,
+                    title: ability.name,
+                    subtitle:
+                      ability.manaCost > 0 ? `💙 ${ability.manaCost}` : '',
+                    icon:
+                      CLASS_ICONS[character.classType] || CLASS_ICONS.default,
+                    content: (
+                      <div>
+                        <div className="text-xs text-gray-400 mb-1">
+                          {ability.description}
                         </div>
-                      )}
-                      {isDM &&
-                        character.abilities &&
-                        character.abilities.length > 0 && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onUpdate({ removeAbility: ability.id });
-                            }}
-                            className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-900/30 transition-colors mt-2"
-                          >
-                            🗑️ Eliminar
-                          </button>
+                        {ability.damage && (
+                          <div className="text-xs text-orange-400 mb-1">
+                            Daño: {ability.damage}
+                          </div>
                         )}
-                    </div>
-                  ),
-                }))}
+                        {isDM &&
+                          character.abilities &&
+                          character.abilities.length > 0 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onUpdate({ removeAbility: ability.id });
+                              }}
+                              className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-900/30 transition-colors mt-2"
+                            >
+                              🗑️ Eliminar
+                            </button>
+                          )}
+                      </div>
+                    ),
+                  }))}
+                />
+              ) : (
+                <p className="text-gray-500 text-center py-4 text-sm">
+                  No hay habilidades
+                </p>
+              );
+            })()}
+          </div>
+
+          {/* Estados */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-semibold text-purple-400">
+                ✨ Estados
+              </h3>
+              <span className="text-xs text-gray-400">
+                {character.status?.length || 0} efectos
+              </span>
+            </div>
+            {character.status && character.status.length > 0 ? (
+              <AccordionList
+                items={character.status.map((status) => {
+                  const getStatusIcon = (type) => {
+                    if (type === 'buff') return '🟢';
+                    if (type === 'debuff') return '🔴';
+                    return '⚪';
+                  };
+                  return {
+                    id: status.id,
+                    title: status.name,
+                    subtitle: status.duration
+                      ? `Duración: ${status.duration}`
+                      : '',
+                    icon: getStatusIcon(status.type),
+                    content: (
+                      <div>
+                        <div className="text-xs text-gray-400 mb-1">
+                          {status.description}
+                        </div>
+                        <div className="text-xs mb-1">
+                          Tipo:{' '}
+                          <span className="font-semibold">{status.type}</span>
+                        </div>
+                        {status.duration && (
+                          <div className="text-xs">
+                            Turnos restantes: {status.duration}
+                          </div>
+                        )}
+                      </div>
+                    ),
+                  };
+                })}
               />
             ) : (
-              <p className="text-gray-500 text-center py-4 text-sm">
-                No hay habilidades
+              <p className="text-gray-500 text-sm w-full text-center py-2">
+                Sin efectos activos
               </p>
-            );
-          })()}
-        </div>
-
-        {/* Estados */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-base font-semibold text-purple-400">
-              ✨ Estados
-            </h3>
-            <span className="text-xs text-gray-400">
-              {character.status?.length || 0} efectos
-            </span>
+            )}
           </div>
-          {character.status && character.status.length > 0 ? (
-            <AccordionList
-              items={character.status.map((status) => {
-                const getStatusIcon = (type) => {
-                  if (type === 'buff') return '🟢';
-                  if (type === 'debuff') return '🔴';
-                  return '⚪';
-                };
-                return {
-                  id: status.id,
-                  title: status.name,
-                  subtitle: status.duration
-                    ? `Duración: ${status.duration}`
-                    : '',
-                  icon: getStatusIcon(status.type),
-                  content: (
-                    <div>
-                      <div className="text-xs text-gray-400 mb-1">
-                        {status.description}
-                      </div>
-                      <div className="text-xs mb-1">
-                        Tipo:{' '}
-                        <span className="font-semibold">{status.type}</span>
-                      </div>
-                      {status.duration && (
-                        <div className="text-xs">
-                          Turnos restantes: {status.duration}
-                        </div>
-                      )}
-                    </div>
-                  ),
-                };
-              })}
-            />
-          ) : (
-            <p className="text-gray-500 text-sm w-full text-center py-2">
-              Sin efectos activos
-            </p>
-          )}
         </div>
       </div>
 

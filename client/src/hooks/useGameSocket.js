@@ -40,8 +40,8 @@ export const useGameSocket = (gameId, onJoinedGame) => {
     socket.current.on('character-updated', ({ characterId, canEdit }) => {
       setCharacters((prev) =>
         prev.map((char) =>
-          char._id === characterId ? { ...char, canEdit } : char
-        )
+          char._id === characterId ? { ...char, canEdit } : char,
+        ),
       );
     });
 
@@ -50,8 +50,8 @@ export const useGameSocket = (gameId, onJoinedGame) => {
         prev.map((char) =>
           char._id === characterId
             ? { ...char, abilities: [...char.abilities, ability] }
-            : char
-        )
+            : char,
+        ),
       );
     });
 
@@ -63,8 +63,8 @@ export const useGameSocket = (gameId, onJoinedGame) => {
                 ...char,
                 abilities: char.abilities.filter((a) => a.id !== abilityId),
               }
-            : char
-        )
+            : char,
+        ),
       );
     });
 
@@ -75,7 +75,7 @@ export const useGameSocket = (gameId, onJoinedGame) => {
           return update
             ? { ...char, stats: { ...char.stats, hp: update.hp } }
             : char;
-        })
+        }),
       );
     });
 
@@ -84,8 +84,8 @@ export const useGameSocket = (gameId, onJoinedGame) => {
         prev.map((char) =>
           char._id === characterId
             ? { ...char, status: [...char.status, status] }
-            : char
-        )
+            : char,
+        ),
       );
     });
 
@@ -94,10 +94,24 @@ export const useGameSocket = (gameId, onJoinedGame) => {
         prev.map((char) =>
           char._id === characterId
             ? { ...char, status: char.status.filter((s) => s.id !== statusId) }
-            : char
-        )
+            : char,
+        ),
       );
     });
+
+    // Evento de validación de personaje
+    socket.current.on(
+      'character-validated',
+      ({ characterId, validated, comment }) => {
+        setCharacters((prev) =>
+          prev.map((char) =>
+            char._id === characterId
+              ? { ...char, validated, validationComment: comment }
+              : char,
+          ),
+        );
+      },
+    );
 
     return () => {
       socket.current?.disconnect();
