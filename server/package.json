@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "node src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "seed:abilities": "node src/scripts/seedClassAbilities.js",
+    "seed:npcs": "node src/scripts/seedNPCTemplates.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

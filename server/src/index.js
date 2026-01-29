@@ -8,6 +8,7 @@ import characterRoutes from './routes/character.js';
 import classAbilityRoutes from './routes/classAbility.js';
 import gameRoutes from './routes/game.js';
 import { createItemRoutes } from './routes/item.js';
+import npcRoutes from './routes/npc.js';
 import { setupGameSockets } from './socket/gameSocket.js';
 
 // Configurar dotenv para cargar el archivo .env desde la ubicación correcta
@@ -42,6 +43,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/characters', characterRoutes);
 app.use('/api/class-abilities', classAbilityRoutes);
+app.use('/api/npc', npcRoutes);
 
 // WebSockets
 setupGameSockets(io);

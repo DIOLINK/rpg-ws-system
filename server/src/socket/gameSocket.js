@@ -11,6 +11,7 @@ const calculateInitiative = (characters) => {
       name: char.name,
       initiative: char.stats?.dexterity || 1,
       isKO: char.isKO || false,
+      isNPC: char.isNPC || false,
     }))
     .sort((a, b) => b.initiative - a.initiative) // Mayor dexterity primero
     .map((entry, index) => ({ ...entry, position: index }));
@@ -206,15 +207,27 @@ export const setupGameSockets = (io) => {
           return;
         }
 
-        // Obtener todos los personajes de la partida
+        // Obtener todos los personajes de la partida (jugadores)
         const characterIds = game.players
           .filter((p) => p.characterId)
           .map((p) => p.characterId);
 
-        const characters = await Character.find({ _id: { $in: characterIds } });
+        const playerCharacters = await Character.find({
+          _id: { $in: characterIds },
+        });
+
+        // Obtener todos los NPCs activos de la partida (no muertos)
+        const npcCharacters = await Character.find({
+          gameId: gameId,
+          isNPC: true,
+          isDead: { $ne: true },
+        });
+
+        // Combinar jugadores y NPCs
+        const allCharacters = [...playerCharacters, ...npcCharacters];
 
         // Calcular iniciativa
-        const turnOrder = calculateInitiative(characters);
+        const turnOrder = calculateInitiative(allCharacters);
 
         // Guardar en la partida
         game.turnOrder = turnOrder;
@@ -510,6 +523,8 @@ export const setupGameSockets = (io) => {
           name: character.name,
           initiative: character.stats?.dexterity || 1,
           position: game.turnOrder.length,
+          isNPC: character.isNPC || false,
+          isKO: character.isKO || false,
         };
 
         // Agregar y recalcular posiciones
@@ -1325,6 +1340,120 @@ export const setupGameSockets = (io) => {
         });
       },
     );
+
+    // === EVENTOS DE NPCs ===
+
+    // DM: NPC spawneado - notificar a todos
+    socket.on('npc:spawned', async ({ gameId, npc }) => {
+      if (!(await isDM(socket, gameId))) {
+        socket.emit('error', { message: 'No autorizado' });
+        return;
+      }
+
+      io.to(`game:${gameId}`).emit('npc-spawned', {
+        npc,
+        message: `${npc.name} ha aparecido`,
+      });
+    });
+
+    // DM: NPC muerto - remover del turno y notificar
+    socket.on('npc:killed', async ({ gameId, npcId, loot }) => {
+      if (!(await isDM(socket, gameId))) {
+        socket.emit('error', { message: 'No autorizado' });
+        return;
+      }
+
+      try {
+        const game = await Game.findById(gameId);
+        if (!game) return;
+
+        // Remover del orden de turnos si está
+        const turnIndex = game.turnOrder.findIndex(
+          (t) => t.characterId?.toString() === npcId,
+        );
+
+        if (turnIndex !== -1) {
+          // Si era el turno actual, pasar al siguiente
+          if (turnIndex === game.currentTurnIndex) {
+            // No avanzar el índice, solo remover
+          } else if (turnIndex < game.currentTurnIndex) {
+            game.currentTurnIndex = Math.max(0, game.currentTurnIndex - 1);
+          }
+
+          game.turnOrder.splice(turnIndex, 1);
+
+          // Reasignar posiciones
+          game.turnOrder = game.turnOrder.map((entry, index) => ({
+            ...(entry.toObject ? entry.toObject() : entry),
+            position: index,
+          }));
+
+          // Ajustar índice si es necesario
+          if (game.currentTurnIndex >= game.turnOrder.length) {
+            game.currentTurnIndex = 0;
+          }
+
+          await game.save();
+        }
+
+        const npc = await Character.findById(npcId);
+
+        io.to(`game:${gameId}`).emit('npc-killed', {
+          npcId,
+          npcName: npc?.name || 'NPC',
+          loot,
+          turnOrder: game.turnOrder,
+          currentTurnIndex: game.currentTurnIndex,
+        });
+      } catch (error) {
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    // DM: NPC eliminado (sin loot)
+    socket.on('npc:deleted', async ({ gameId, npcId }) => {
+      if (!(await isDM(socket, gameId))) {
+        socket.emit('error', { message: 'No autorizado' });
+        return;
+      }
+
+      try {
+        const game = await Game.findById(gameId);
+        if (!game) return;
+
+        // Remover del orden de turnos si está
+        const turnIndex = game.turnOrder.findIndex(
+          (t) => t.characterId?.toString() === npcId,
+        );
+
+        if (turnIndex !== -1) {
+          if (turnIndex < game.currentTurnIndex) {
+            game.currentTurnIndex = Math.max(0, game.currentTurnIndex - 1);
+          }
+
+          game.turnOrder.splice(turnIndex, 1);
+
+          game.turnOrder = game.turnOrder.map((entry, index) => ({
+            ...(entry.toObject ? entry.toObject() : entry),
+            position: index,
+          }));
+
+          if (game.currentTurnIndex >= game.turnOrder.length) {
+            game.currentTurnIndex = 0;
+          }
+
+          await game.save();
+        }
+
+        io.to(`game:${gameId}`).emit('npc-deleted', {
+          npcId,
+          turnOrder: game.turnOrder,
+          currentTurnIndex: game.currentTurnIndex,
+        });
+      } catch (error) {
+        socket.emit('error', { message: error.message });
+      }
+    });
 
     socket.on('disconnect', () => {
       console.log('❌ Usuario desconectado:', socket.id);

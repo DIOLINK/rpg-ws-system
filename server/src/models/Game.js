@@ -19,6 +19,8 @@ const gameSchema = new mongoose.Schema({
       name: { type: String },
       initiative: { type: Number, default: 0 },
       position: { type: Number }, // Posición en el orden de turnos
+      isNPC: { type: Boolean, default: false }, // Si es un NPC
+      isKO: { type: Boolean, default: false }, // Si está KO
     },
   ],
   currentTurnIndex: { type: Number, default: 0 }, // Índice del personaje con el turno actual

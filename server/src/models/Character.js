@@ -132,6 +132,8 @@ const characterSchema = new mongoose.Schema(
         equipped: { type: Boolean, default: false },
         // Valor en oro
         value: { type: Number, default: 0 },
+        // Drop chance para NPCs (porcentaje 0-100)
+        dropChance: { type: Number, default: 100 },
       },
     ],
 
@@ -169,6 +171,37 @@ const characterSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+
+    // === Campos para NPCs ===
+    isNPC: { type: Boolean, default: false },
+
+    // Tipo de NPC (enemy, boss, miniboss, neutral, ally)
+    npcType: {
+      type: String,
+      enum: ['enemy', 'boss', 'miniboss', 'neutral', 'ally'],
+      default: 'enemy',
+    },
+
+    // Experiencia que da al morir (solo NPCs)
+    expReward: { type: Number, default: 0 },
+
+    // Oro que dropea al morir (min-max)
+    goldDrop: {
+      min: { type: Number, default: 0 },
+      max: { type: Number, default: 0 },
+    },
+
+    // Drop chance para items del inventario (porcentaje 0-100 por item)
+    // Se almacena en cada item del inventory con campo dropChance
+
+    // Plantilla de la que se creó (para referencia)
+    templateId: { type: mongoose.Schema.Types.ObjectId, ref: 'NPCTemplate' },
+
+    // Icono del NPC
+    npcIcon: { type: String, default: '👹' },
+
+    // Si el NPC está muerto (para NPCs, KO = muerte)
+    isDead: { type: Boolean, default: false },
   },
   { timestamps: true },
 );
