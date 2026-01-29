@@ -313,6 +313,16 @@ export const CharacterSheet = ({
                       onChange={handleInputChange}
                       className="w-12 px-1 py-0.5 bg-gray-600 rounded text-xs text-center"
                     />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => ({ ...prev, hp: prev.maxHp }))
+                      }
+                      className="px-1.5 py-0.5 bg-red-500 hover:bg-red-400 rounded text-xs text-white"
+                      title="Llenar HP al máximo"
+                    >
+                      MAX
+                    </button>
                   </div>
                 ) : (
                   <span className="text-xs text-gray-300">
@@ -387,6 +397,16 @@ export const CharacterSheet = ({
                       onChange={handleInputChange}
                       className="w-12 px-1 py-0.5 bg-gray-600 rounded text-xs text-center"
                     />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => ({ ...prev, mana: prev.maxMana }))
+                      }
+                      className="px-1.5 py-0.5 bg-blue-500 hover:bg-blue-400 rounded text-xs text-white"
+                      title="Llenar MP al máximo"
+                    >
+                      MAX
+                    </button>
                   </div>
                 ) : (
                   <span className="text-xs text-gray-300">
@@ -558,92 +578,92 @@ export const CharacterSheet = ({
             )}
           </div>
         </div>
-      </div>
 
-      {/* DORSO - Descripción e Inventario */}
-      <div
-        className="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl absolute inset-0 w-full h-full overflow-auto"
-        style={{
-          backfaceVisibility: 'hidden',
-          transform: 'rotateY(180deg)',
-        }}
-      >
-        {/* Header del dorso */}
-        <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <div className="flex items-center gap-3">
-            <span className="text-3xl select-none">📜</span>
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-white">
-                {character.name}
-              </h2>
-              <p className="text-xs sm:text-sm text-gray-400">
-                Descripción e Inventario
-              </p>
+        {/* DORSO - Descripción e Inventario */}
+        <div
+          className="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl absolute inset-0 w-full h-full overflow-auto"
+          style={{
+            backfaceVisibility: 'hidden',
+            transform: 'rotateY(180deg)',
+          }}
+        >
+          {/* Header del dorso */}
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl select-none">📜</span>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white">
+                  {character.name}
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-400">
+                  Descripción e Inventario
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Descripción */}
-        <div className="mb-6">
-          <h3 className="text-base font-semibold text-purple-400 mb-3 flex items-center gap-2">
-            📖 Descripción
-          </h3>
-          <div className="bg-gray-700/50 rounded-lg p-4">
-            {character.description ? (
-              <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
-                {character.description}
-              </p>
+          {/* Descripción */}
+          <div className="mb-6">
+            <h3 className="text-base font-semibold text-purple-400 mb-3 flex items-center gap-2">
+              📖 Descripción
+            </h3>
+            <div className="bg-gray-700/50 rounded-lg p-4">
+              {character.description ? (
+                <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+                  {character.description}
+                </p>
+              ) : (
+                <p className="text-sm text-gray-500 italic text-center py-2">
+                  Sin descripción
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Inventario */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base font-semibold text-purple-400 flex items-center gap-2">
+                🎒 Inventario
+              </h3>
+              <span className="text-xs text-gray-400">
+                {character.inventory?.length || 0} objetos
+              </span>
+            </div>
+            {character.inventory && character.inventory.length > 0 ? (
+              <div className="space-y-2">
+                {character.inventory.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-gray-700/50 rounded-lg p-3 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">📦</span>
+                      <div>
+                        <p className="text-sm font-medium text-white">
+                          {item.name}
+                        </p>
+                        {item.description && (
+                          <p className="text-xs text-gray-400">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-sm font-bold text-purple-400 bg-purple-900/30 px-2 py-1 rounded">
+                      x{item.quantity}
+                    </span>
+                  </div>
+                ))}
+              </div>
             ) : (
-              <p className="text-sm text-gray-500 italic text-center py-2">
-                Sin descripción
-              </p>
+              <div className="bg-gray-700/30 rounded-lg p-4">
+                <p className="text-sm text-gray-500 text-center">
+                  🎒 Inventario vacío
+                </p>
+              </div>
             )}
           </div>
-        </div>
-
-        {/* Inventario */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-base font-semibold text-purple-400 flex items-center gap-2">
-              🎒 Inventario
-            </h3>
-            <span className="text-xs text-gray-400">
-              {character.inventory?.length || 0} objetos
-            </span>
-          </div>
-          {character.inventory && character.inventory.length > 0 ? (
-            <div className="space-y-2">
-              {character.inventory.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-gray-700/50 rounded-lg p-3 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">📦</span>
-                    <div>
-                      <p className="text-sm font-medium text-white">
-                        {item.name}
-                      </p>
-                      {item.description && (
-                        <p className="text-xs text-gray-400">
-                          {item.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-sm font-bold text-purple-400 bg-purple-900/30 px-2 py-1 rounded">
-                    x{item.quantity}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-gray-700/30 rounded-lg p-4">
-              <p className="text-sm text-gray-500 text-center">
-                🎒 Inventario vacío
-              </p>
-            </div>
-          )}
         </div>
       </div>
     </div>
