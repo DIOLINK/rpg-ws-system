@@ -453,6 +453,571 @@ export const createItemRoutes = (io) => {
     }
   });
 
+  // ============ EQUIPAMIENTO DE ITEMS ============
+
+  // Equipar un item (jugador)
+  router.post(
+    '/equip/:characterId/:inventoryId',
+    authenticateUser,
+    async (req, res) => {
+      try {
+        const { gameId } = req.body;
+        const character = await Character.findById(req.params.characterId);
+
+        if (!character) {
+          return res.status(404).json({ error: 'Personaje no encontrado' });
+        }
+
+        // Verificar que el usuario es dueño del personaje o DM
+        const isOwner =
+          character.playerId.toString() === req.user._id.toString();
+        const isDM = gameId && (await isDMOfGame(req.user._id, gameId));
+
+        if (!isOwner && !isDM) {
+          return res.status(403).json({ error: 'No autorizado' });
+        }
+
+        const itemIndex = character.inventory.findIndex(
+          (inv) => inv.id === req.params.inventoryId,
+        );
+
+        if (itemIndex === -1) {
+          return res
+            .status(404)
+            .json({ error: 'Item no encontrado en el inventario' });
+        }
+
+        const item = character.inventory[itemIndex];
+
+        if (!item.equippable) {
+          return res
+            .status(400)
+            .json({ error: 'Este item no se puede equipar' });
+        }
+
+        if (!item.equipSlot) {
+          return res
+            .status(400)
+            .json({ error: 'El item no tiene slot de equipo definido' });
+        }
+
+        // Contar items equipados actualmente
+        const equippedCount = character.inventory.filter(
+          (inv) => inv.equipped,
+        ).length;
+
+        // Verificar límite de 5 items equipados (si el item actual no está equipado)
+        if (!item.equipped && equippedCount >= 5) {
+          return res
+            .status(400)
+            .json({ error: 'No puedes equipar más de 5 items' });
+        }
+
+        // Si hay otro item en el mismo slot, desequiparlo
+        const currentEquippedId = character.equipment[item.equipSlot];
+        if (currentEquippedId && currentEquippedId !== item.id) {
+          const currentEquipped = character.inventory.find(
+            (inv) => inv.id === currentEquippedId,
+          );
+          if (currentEquipped) {
+            currentEquipped.equipped = false;
+          }
+        }
+
+        let equippedItem = item;
+
+        // Si el item tiene cantidad > 1, separar 1 unidad para equipar
+        if (item.quantity > 1) {
+          // Reducir cantidad del stack original
+          item.quantity -= 1;
+
+          // Crear nuevo item equipado con cantidad 1
+          const newEquippedItem = {
+            ...(item.toObject ? item.toObject() : { ...item }),
+            id: `inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            quantity: 1,
+            equipped: true,
+          };
+
+          character.inventory.push(newEquippedItem);
+          equippedItem = newEquippedItem;
+        } else {
+          // Si solo hay 1, equipar directamente
+          item.equipped = true;
+        }
+
+        character.equipment[item.equipSlot] = equippedItem.id;
+        character.updatedAt = new Date();
+        await character.save();
+
+        // Emitir evento
+        emitInventoryUpdate(character, gameId, equippedItem, 'equipped');
+
+        res.json({
+          message: `${equippedItem.name} equipado`,
+          character,
+          item: equippedItem,
+        });
+      } catch (error) {
+        console.error('Error al equipar item:', error);
+        res.status(500).json({ error: error.message });
+      }
+    },
+  );
+
+  // Desequipar un item (jugador)
+  router.post(
+    '/unequip/:characterId/:inventoryId',
+    authenticateUser,
+    async (req, res) => {
+      try {
+        const { gameId } = req.body;
+        const character = await Character.findById(req.params.characterId);
+
+        if (!character) {
+          return res.status(404).json({ error: 'Personaje no encontrado' });
+        }
+
+        // Verificar que el usuario es dueño del personaje o DM
+        const isOwner =
+          character.playerId.toString() === req.user._id.toString();
+        const isDM = gameId && (await isDMOfGame(req.user._id, gameId));
+
+        if (!isOwner && !isDM) {
+          return res.status(403).json({ error: 'No autorizado' });
+        }
+
+        const item = character.inventory.find(
+          (inv) => inv.id === req.params.inventoryId,
+        );
+
+        if (!item) {
+          return res
+            .status(404)
+            .json({ error: 'Item no encontrado en el inventario' });
+        }
+
+        if (!item.equipped) {
+          return res.status(400).json({ error: 'El item no está equipado' });
+        }
+
+        // Desequipar
+        item.equipped = false;
+        if (item.equipSlot && character.equipment[item.equipSlot] === item.id) {
+          character.equipment[item.equipSlot] = null;
+        }
+
+        character.updatedAt = new Date();
+        await character.save();
+
+        // Emitir evento
+        emitInventoryUpdate(character, gameId, item, 'unequipped');
+
+        res.json({
+          message: `${item.name} desequipado`,
+          character,
+          item,
+        });
+      } catch (error) {
+        console.error('Error al desequipar item:', error);
+        res.status(500).json({ error: error.message });
+      }
+    },
+  );
+
+  // ============ SISTEMA DE VENTA ============
+
+  // Solicitar venta de un item (jugador -> DM debe aprobar)
+  router.post(
+    '/sell-request/:characterId/:inventoryId',
+    authenticateUser,
+    async (req, res) => {
+      try {
+        const { gameId, quantity = 1 } = req.body;
+        const character = await Character.findById(req.params.characterId);
+
+        if (!character) {
+          return res.status(404).json({ error: 'Personaje no encontrado' });
+        }
+
+        // Solo el dueño puede solicitar venta
+        if (character.playerId.toString() !== req.user._id.toString()) {
+          return res
+            .status(403)
+            .json({ error: 'Solo el dueño del personaje puede vender items' });
+        }
+
+        const item = character.inventory.find(
+          (inv) => inv.id === req.params.inventoryId,
+        );
+
+        if (!item) {
+          return res
+            .status(404)
+            .json({ error: 'Item no encontrado en el inventario' });
+        }
+
+        if (item.equipped) {
+          return res
+            .status(400)
+            .json({ error: 'Desequipa el item antes de venderlo' });
+        }
+
+        if (item.type === 'quest') {
+          return res
+            .status(400)
+            .json({ error: 'No puedes vender items de misión' });
+        }
+
+        const sellQuantity = Math.min(quantity, item.quantity);
+        const sellValue = (item.value || 0) * sellQuantity;
+
+        if (sellValue <= 0) {
+          return res
+            .status(400)
+            .json({ error: 'Este item no tiene valor de venta' });
+        }
+
+        // Obtener el juego para notificar al DM
+        const game = await Game.findById(gameId || character.gameId);
+        if (!game) {
+          return res.status(404).json({ error: 'Partida no encontrada' });
+        }
+
+        // Emitir solicitud de venta al DM
+        const sellRequest = {
+          id: `sell_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          characterId: character._id,
+          characterName: character.name,
+          playerId: character.playerId,
+          inventoryId: item.id,
+          itemName: item.name,
+          itemIcon: item.icon || '📦',
+          quantity: sellQuantity,
+          totalValue: sellValue,
+          unitValue: item.value || 0,
+          timestamp: new Date(),
+        };
+
+        // Emitir al DM
+        const dmChannel = `user:${game.dmId}`;
+        console.log(`💰 Enviando solicitud de venta al DM: ${dmChannel}`);
+        io.to(dmChannel).emit('sell-request', sellRequest);
+
+        // También al canal del juego para que el DM lo vea si está en la partida
+        io.to(`game:${game._id}`).emit('sell-request', sellRequest);
+
+        res.json({
+          message: 'Solicitud de venta enviada al DM',
+          sellRequest,
+        });
+      } catch (error) {
+        console.error('Error al solicitar venta:', error);
+        res.status(500).json({ error: error.message });
+      }
+    },
+  );
+
+  // DM responde a solicitud de venta
+  router.post('/sell-response', authenticateUser, async (req, res) => {
+    try {
+      const {
+        characterId,
+        inventoryId,
+        quantity,
+        totalValue,
+        approved,
+        gameId,
+      } = req.body;
+
+      // Verificar que es DM
+      if (!(await isDMOfGame(req.user._id, gameId))) {
+        return res
+          .status(403)
+          .json({ error: 'Solo el DM puede aprobar ventas' });
+      }
+
+      const character = await Character.findById(characterId);
+      if (!character) {
+        return res.status(404).json({ error: 'Personaje no encontrado' });
+      }
+
+      const itemIndex = character.inventory.findIndex(
+        (inv) => inv.id === inventoryId,
+      );
+      if (itemIndex === -1) {
+        // Notificar al jugador que el item ya no existe
+        io.to(`user:${character.playerId}`).emit('sell-response', {
+          approved: false,
+          reason: 'El item ya no existe en el inventario',
+          characterId,
+        });
+        return res.status(404).json({ error: 'Item no encontrado' });
+      }
+
+      const item = character.inventory[itemIndex];
+
+      if (approved) {
+        // Procesar la venta
+        if (item.quantity <= quantity) {
+          // Eliminar item completamente
+          character.inventory.splice(itemIndex, 1);
+        } else {
+          // Reducir cantidad
+          item.quantity -= quantity;
+        }
+
+        // Añadir oro
+        character.gold = (character.gold || 0) + totalValue;
+        character.updatedAt = new Date();
+        await character.save();
+
+        // Notificar al jugador
+        const playerChannel = `user:${character.playerId}`;
+        console.log(
+          `✅ Emitiendo sell-response (aprobado) a: ${playerChannel}`,
+        );
+        io.to(playerChannel).emit('sell-response', {
+          approved: true,
+          itemName: item.name,
+          quantity,
+          totalValue,
+          newGold: character.gold,
+          characterId,
+        });
+
+        // Actualizar inventario para todos
+        emitInventoryUpdate(character, gameId, item, 'sold');
+
+        res.json({
+          message: `Venta aprobada: ${item.name} x${quantity} por ${totalValue} oro`,
+          character,
+        });
+      } else {
+        // Rechazar venta
+        const playerChannel = `user:${character.playerId}`;
+        console.log(
+          `❌ Emitiendo sell-response (rechazado) a: ${playerChannel}`,
+        );
+        io.to(playerChannel).emit('sell-response', {
+          approved: false,
+          itemName: item.name,
+          reason: 'El DM ha rechazado la venta',
+          characterId,
+        });
+
+        res.json({
+          message: 'Venta rechazada',
+        });
+      }
+    } catch (error) {
+      console.error('Error al procesar respuesta de venta:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============ SISTEMA DE VENTA DEL DM A JUGADORES ============
+
+  // DM ofrece vender items a un jugador (soporta múltiples items)
+  router.post('/shop-offer', authenticateUser, async (req, res) => {
+    try {
+      const { items, characterId, gameId } = req.body;
+      // items = [{itemId, quantity, price}]
+
+      // Verificar que es DM
+      if (!(await isDMOfGame(req.user._id, gameId))) {
+        return res
+          .status(403)
+          .json({ error: 'Solo el DM puede ofrecer items en venta' });
+      }
+
+      // Obtener el personaje
+      const character = await Character.findById(characterId);
+      if (!character) {
+        return res.status(404).json({ error: 'Personaje no encontrado' });
+      }
+
+      // Obtener todos los items del catálogo
+      const itemIds = items.map((i) => i.itemId);
+      const catalogItems = await Item.find({ _id: { $in: itemIds } });
+
+      if (catalogItems.length !== items.length) {
+        return res
+          .status(404)
+          .json({ error: 'Algunos items no fueron encontrados' });
+      }
+
+      // Construir la oferta con datos completos de cada item
+      const offerItems = items.map((reqItem) => {
+        const catalogItem = catalogItems.find(
+          (ci) => ci._id.toString() === reqItem.itemId,
+        );
+        return {
+          itemId: catalogItem._id,
+          itemName: catalogItem.name,
+          itemIcon: catalogItem.icon || '📦',
+          itemDescription: catalogItem.description,
+          itemType: catalogItem.type,
+          itemRarity: catalogItem.rarity,
+          itemValue: catalogItem.value,
+          quantity: reqItem.quantity,
+          unitPrice: reqItem.price,
+          subtotal: reqItem.quantity * reqItem.price,
+        };
+      });
+
+      const totalPrice = offerItems.reduce((sum, i) => sum + i.subtotal, 0);
+
+      // Crear oferta de compra
+      const shopOffer = {
+        id: `shop_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        items: offerItems,
+        totalPrice,
+        characterId: character._id,
+        characterName: character.name,
+        playerId: character.playerId,
+        gameId,
+        timestamp: new Date(),
+      };
+
+      // Emitir oferta al jugador
+      const playerChannel = `user:${character.playerId}`;
+      console.log(
+        `🏪 Enviando oferta de compra (${offerItems.length} items) a: ${playerChannel}`,
+      );
+      io.to(playerChannel).emit('shop-offer', shopOffer);
+
+      res.json({
+        message: 'Oferta enviada al jugador',
+        shopOffer,
+      });
+    } catch (error) {
+      console.error('Error al crear oferta de venta:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Jugador responde a oferta de compra del DM (múltiples items)
+  router.post('/shop-response', authenticateUser, async (req, res) => {
+    try {
+      const { items, characterId, totalPrice, accepted, gameId, offerId } =
+        req.body;
+      // items = [{itemId, itemName, quantity, ...}]
+
+      const character = await Character.findById(characterId);
+      if (!character) {
+        return res.status(404).json({ error: 'Personaje no encontrado' });
+      }
+
+      // Verificar que el usuario es dueño del personaje
+      if (character.playerId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ error: 'No autorizado' });
+      }
+
+      // Obtener el juego para notificar al DM
+      const game = await Game.findById(gameId);
+      if (!game) {
+        return res.status(404).json({ error: 'Partida no encontrada' });
+      }
+
+      const itemSummary = items
+        .map((i) => `${i.quantity}x ${i.itemName}`)
+        .join(', ');
+
+      if (accepted) {
+        // Verificar que tiene suficiente oro
+        if ((character.gold || 0) < totalPrice) {
+          io.to(`user:${game.dmId}`).emit('shop-response', {
+            accepted: false,
+            characterName: character.name,
+            itemSummary,
+            reason: 'No tiene suficiente oro',
+          });
+
+          return res.status(400).json({ error: 'No tienes suficiente oro' });
+        }
+
+        // Restar oro
+        character.gold = (character.gold || 0) - totalPrice;
+
+        // Agregar cada item al inventario
+        for (const reqItem of items) {
+          const originalItem = await Item.findById(reqItem.itemId);
+          if (!originalItem) {
+            console.warn(`Item ${reqItem.itemId} no encontrado, saltando...`);
+            continue;
+          }
+
+          const newInventoryItem = {
+            id: `inv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            itemRef: originalItem._id,
+            name: originalItem.name,
+            description: originalItem.description,
+            quantity: reqItem.quantity,
+            type: originalItem.type,
+            rarity: originalItem.rarity,
+            icon: originalItem.icon,
+            damage: originalItem.damage,
+            equippable: originalItem.equippable,
+            equipSlot: originalItem.equipSlot,
+            equipped: false,
+            value: originalItem.value,
+            statModifiers: originalItem.statModifiers || {},
+          };
+
+          // Buscar si ya tiene el item para stackear
+          const existingItem = character.inventory.find(
+            (inv) =>
+              inv.itemRef?.toString() === originalItem._id.toString() &&
+              !inv.equipped,
+          );
+
+          if (existingItem && originalItem.stackable !== false) {
+            existingItem.quantity += reqItem.quantity;
+          } else {
+            character.inventory.push(newInventoryItem);
+          }
+        }
+
+        character.updatedAt = new Date();
+        await character.save();
+
+        // Notificar al DM que aceptó
+        io.to(`user:${game.dmId}`).emit('shop-response', {
+          accepted: true,
+          characterName: character.name,
+          itemSummary,
+          itemCount: items.length,
+          totalPrice,
+        });
+
+        // Actualizar inventario para todos
+        emitInventoryUpdate(character, gameId, null, 'purchased');
+
+        res.json({
+          message: `Compra exitosa: ${itemSummary}`,
+          character,
+          newGold: character.gold,
+        });
+      } else {
+        // Rechazó la compra - notificar al DM
+        io.to(`user:${game.dmId}`).emit('shop-response', {
+          accepted: false,
+          characterName: character.name,
+          itemSummary,
+          reason: 'El jugador rechazó la oferta',
+        });
+
+        res.json({
+          message: 'Oferta rechazada',
+        });
+      }
+    } catch (error) {
+      console.error('Error al procesar respuesta de compra:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return router;
 };
 
