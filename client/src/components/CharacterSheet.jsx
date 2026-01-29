@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import useToastStore from '../context/toastStore';
 import { MAX_GAMES_DISPLAYED } from '../pages/GameLobby';
 import { classAbilityService } from '../services/classAbilityService';
 import { itemService } from '../services/itemService';
@@ -28,6 +29,8 @@ export const CharacterSheet = ({
   gameId,
 }) => {
   const { isDM } = useAuth();
+  const addToast = useToastStore((state) => state.addToast);
+  const removeToast = useToastStore((state) => state.removeToast);
   const [editing, setEditing] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
   const [classAbilities, setClassAbilities] = useState([]);
@@ -35,6 +38,7 @@ export const CharacterSheet = ({
   const [showManaChange, setShowManaChange] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
   const [removingItems, setRemovingItems] = useState(false);
+  const [sellModal, setSellModal] = useState(null); // { item, quantity }
   const [formData, setFormData] = useState({
     name: character.name,
     classType: character.classType || '',
@@ -207,6 +211,86 @@ export const CharacterSheet = ({
       setRemovingItems(false);
     }
   };
+
+  // Funciones de equipamiento (jugador)
+  const handleEquipItem = async (inventoryId) => {
+    try {
+      await itemService.equipItem(character._id, inventoryId, gameId);
+    } catch (error) {
+      console.error('Error al equipar item:', error);
+      addToast({
+        type: 'error',
+        message: error.message || 'Error al equipar item',
+      });
+    }
+  };
+
+  const handleUnequipItem = async (inventoryId) => {
+    try {
+      await itemService.unequipItem(character._id, inventoryId, gameId);
+    } catch (error) {
+      console.error('Error al desequipar item:', error);
+      addToast({
+        type: 'error',
+        message: error.message || 'Error al desequipar item',
+      });
+    }
+  };
+
+  // Iniciar proceso de venta - abre modal
+  const handleSellItem = (item) => {
+    if (item.equipped) {
+      addToast({
+        type: 'warning',
+        message: 'Desequipa el item antes de venderlo',
+      });
+      return;
+    }
+    if (item.type === 'quest') {
+      addToast({
+        type: 'warning',
+        message: 'No puedes vender items de misión',
+      });
+      return;
+    }
+    if (!item.value || item.value <= 0) {
+      addToast({
+        type: 'warning',
+        message: 'Este item no tiene valor de venta',
+      });
+      return;
+    }
+
+    // Abrir modal de venta
+    setSellModal({ item, quantity: 1 });
+  };
+
+  // Confirmar venta desde el modal
+  const confirmSell = async () => {
+    if (!sellModal) return;
+
+    const { item, quantity } = sellModal;
+    const totalValue = item.value * quantity;
+
+    try {
+      await itemService.requestSell(character._id, item.id, quantity, gameId);
+      addToast({
+        type: 'info',
+        message: `💰 Solicitud de venta enviada al DM\n${item.name} x${quantity} por ${totalValue} oro`,
+      });
+      setSellModal(null);
+    } catch (error) {
+      console.error('Error al solicitar venta:', error);
+      addToast({
+        type: 'error',
+        message: error.message || 'Error al solicitar venta',
+      });
+    }
+  };
+
+  // Contar items equipados
+  const equippedCount =
+    character.inventory?.filter((item) => item.equipped).length || 0;
 
   const hpPercentage = (character.stats.hp / character.stats.maxHp) * 100;
   const manaPercentage = (character.stats.mana / character.stats.maxMana) * 100;
@@ -498,6 +582,15 @@ export const CharacterSheet = ({
             </div>
           </div>
 
+          {/* Oro */}
+          <div className="flex items-center justify-center gap-2 mb-4 py-2 px-4 bg-yellow-900/30 border border-yellow-500/30 rounded-lg">
+            <span className="text-2xl">💰</span>
+            <span className="text-lg font-bold text-yellow-400">
+              {character.gold || 0}
+            </span>
+            <span className="text-sm text-yellow-400/70">oro</span>
+          </div>
+
           {/* Stats principales */}
           <CharacterStats
             stats={formData}
@@ -740,6 +833,14 @@ export const CharacterSheet = ({
                 <span className="text-xs text-gray-400">
                   {character.inventory?.length || 0} objetos
                 </span>
+                {!isDM && (
+                  <span
+                    className="text-xs text-yellow-400"
+                    title="Items equipados"
+                  >
+                    ⚔️ {equippedCount}/5
+                  </span>
+                )}
                 {isDM && character.inventory?.length > 0 && (
                   <>
                     <button
@@ -776,36 +877,111 @@ export const CharacterSheet = ({
                 {character.inventory.map((item) => (
                   <div
                     key={item.id}
-                    className={`bg-gray-700/50 rounded-lg p-3 flex items-center justify-between transition-all ${
-                      selectedItems.includes(item.id)
-                        ? 'ring-2 ring-purple-500 bg-purple-900/30'
-                        : ''
+                    className={`bg-gray-700/50 rounded-lg p-3 transition-all ${
+                      item.equipped
+                        ? 'ring-2 ring-yellow-500 bg-yellow-900/20'
+                        : selectedItems.includes(item.id)
+                          ? 'ring-2 ring-purple-500 bg-purple-900/30'
+                          : ''
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      {isDM && (
-                        <input
-                          type="checkbox"
-                          checked={selectedItems.includes(item.id)}
-                          onChange={() => toggleItemSelection(item.id)}
-                          className="w-4 h-4 rounded border-gray-500 text-purple-600 focus:ring-purple-500 bg-gray-700"
-                        />
-                      )}
-                      <span className="text-xl">{item.icon || '📦'}</span>
-                      <div>
-                        <p className="text-sm font-medium text-white">
-                          {item.name}
-                        </p>
-                        {item.description && (
-                          <p className="text-xs text-gray-400">
-                            {item.description}
-                          </p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {isDM && (
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.includes(item.id)}
+                            onChange={() => toggleItemSelection(item.id)}
+                            className="w-4 h-4 rounded border-gray-500 text-purple-600 focus:ring-purple-500 bg-gray-700 flex-shrink-0"
+                          />
+                        )}
+                        <span className="text-xl flex-shrink-0">
+                          {item.icon || '📦'}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-white truncate">
+                              {item.name}
+                            </p>
+                            {item.equipped && (
+                              <span className="text-xs bg-yellow-600 text-white px-1.5 py-0.5 rounded flex-shrink-0">
+                                Equipado
+                              </span>
+                            )}
+                          </div>
+                          {item.description && (
+                            <p className="text-xs text-gray-400 truncate">
+                              {item.description}
+                            </p>
+                          )}
+                          {/* Info adicional del item */}
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            {item.equipSlot && (
+                              <span className="text-xs text-blue-400">
+                                📍 {item.equipSlot}
+                              </span>
+                            )}
+                            {item.value > 0 && (
+                              <span className="text-xs text-yellow-400">
+                                💰 {item.value}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Cantidad y acciones */}
+                      <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                        <span className="text-sm font-bold text-purple-400 bg-purple-900/30 px-2 py-1 rounded">
+                          x{item.quantity}
+                        </span>
+
+                        {/* Botones de acción para jugador (no DM) */}
+                        {!isDM && (
+                          <div className="flex gap-1">
+                            {/* Equipar/Desequipar */}
+                            {item.equippable &&
+                              (item.equipped ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUnequipItem(item.id)}
+                                  className="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded"
+                                  title="Desequipar"
+                                >
+                                  ❌
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleEquipItem(item.id)}
+                                  disabled={equippedCount >= 5}
+                                  className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title={
+                                    equippedCount >= 5
+                                      ? 'Máximo 5 items equipados'
+                                      : 'Equipar'
+                                  }
+                                >
+                                  ⚔️
+                                </button>
+                              ))}
+                            {/* Vender */}
+                            {item.value > 0 &&
+                              item.type !== 'quest' &&
+                              !item.equipped && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSellItem(item)}
+                                  className="text-xs bg-yellow-600 hover:bg-yellow-500 text-white px-2 py-1 rounded"
+                                  title={`Vender por ${item.value} oro`}
+                                >
+                                  💰
+                                </button>
+                              )}
+                          </div>
                         )}
                       </div>
                     </div>
-                    <span className="text-sm font-bold text-purple-400 bg-purple-900/30 px-2 py-1 rounded">
-                      x{item.quantity}
-                    </span>
                   </div>
                 ))}
               </div>
@@ -819,6 +995,100 @@ export const CharacterSheet = ({
           </div>
         </div>
       </div>
+
+      {/* Modal de Venta */}
+      {sellModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-xl p-6 max-w-sm w-full mx-4 shadow-2xl border-2 border-yellow-500/50">
+            <h3 className="text-lg font-bold text-yellow-400 mb-4 flex items-center gap-2">
+              💰 Vender Item
+            </h3>
+
+            <div className="bg-gray-700/50 rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">{sellModal.item.icon || '📦'}</span>
+                <div>
+                  <p className="font-medium text-white">
+                    {sellModal.item.name}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    Valor: {sellModal.item.value} oro c/u
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {sellModal.item.quantity > 1 && (
+              <div className="mb-4">
+                <label className="block text-sm text-gray-300 mb-2">
+                  Cantidad a vender:
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSellModal((prev) => ({
+                        ...prev,
+                        quantity: Math.max(1, prev.quantity - 1),
+                      }))
+                    }
+                    className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg text-xl font-bold"
+                  >
+                    -
+                  </button>
+                  <span className="text-xl font-bold text-white min-w-[3rem] text-center">
+                    {sellModal.quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSellModal((prev) => ({
+                        ...prev,
+                        quantity: Math.min(
+                          sellModal.item.quantity,
+                          prev.quantity + 1,
+                        ),
+                      }))
+                    }
+                    className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg text-xl font-bold"
+                  >
+                    +
+                  </button>
+                  <span className="text-sm text-gray-400">
+                    / {sellModal.item.quantity}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-lg p-3 mb-4">
+              <p className="text-center text-yellow-400 font-bold text-lg">
+                Total: {sellModal.item.value * sellModal.quantity} oro
+              </p>
+              <p className="text-center text-xs text-gray-400 mt-1">
+                El DM debe aprobar la venta
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setSellModal(null)}
+                className="flex-1 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg font-medium transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmSell}
+                className="flex-1 py-2 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-medium transition-colors"
+              >
+                💰 Vender
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

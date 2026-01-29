@@ -106,6 +106,111 @@ export const itemService = {
     );
     return handleResponse(response);
   },
+
+  // ============ EQUIPAMIENTO ============
+
+  // Equipar un item
+  async equipItem(characterId, inventoryId, gameId) {
+    const response = await apiFetch(
+      `${BASE_URL}/api/items/equip/${characterId}/${inventoryId}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameId }),
+      },
+    );
+    return handleResponse(response);
+  },
+
+  // Desequipar un item
+  async unequipItem(characterId, inventoryId, gameId) {
+    const response = await apiFetch(
+      `${BASE_URL}/api/items/unequip/${characterId}/${inventoryId}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameId }),
+      },
+    );
+    return handleResponse(response);
+  },
+
+  // ============ VENTA ============
+
+  // Solicitar venta de un item (jugador)
+  async requestSell(characterId, inventoryId, quantity, gameId) {
+    const response = await apiFetch(
+      `${BASE_URL}/api/items/sell-request/${characterId}/${inventoryId}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameId, quantity }),
+      },
+    );
+    return handleResponse(response);
+  },
+
+  // Responder a solicitud de venta (DM)
+  async respondToSellRequest({
+    characterId,
+    inventoryId,
+    quantity,
+    totalValue,
+    approved,
+    gameId,
+  }) {
+    const response = await apiFetch(`${BASE_URL}/api/items/sell-response`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        characterId,
+        inventoryId,
+        quantity,
+        totalValue,
+        approved,
+        gameId,
+      }),
+    });
+    return handleResponse(response);
+  },
+
+  // DM ofrece vender items a un jugador (soporta múltiples items)
+  async createShopOffer({ items, characterId, gameId }) {
+    const response = await apiFetch(`${BASE_URL}/api/items/shop-offer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items, // [{itemId, quantity, price}]
+        characterId,
+        gameId,
+      }),
+    });
+    return handleResponse(response);
+  },
+
+  // Jugador responde a oferta de compra del DM (múltiples items)
+  async respondToShopOffer({
+    items, // Para múltiples items
+    characterId,
+    totalPrice,
+    accepted,
+    gameId,
+    offerId,
+  }) {
+    const response = await apiFetch(`${BASE_URL}/api/items/shop-response`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items,
+        characterId,
+        totalPrice,
+        accepted,
+        gameId,
+        offerId,
+      }),
+    });
+    return handleResponse(response);
+  },
 };
 
 // Constantes útiles

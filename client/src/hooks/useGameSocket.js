@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
+import { useAuth } from '../context/AuthContext';
+import useToastStore from '../context/toastStore';
 import { authService } from '../utils/authService';
 
 export const useGameSocket = (gameId, onJoinedGame) => {
@@ -7,6 +9,8 @@ export const useGameSocket = (gameId, onJoinedGame) => {
   const [connected, setConnected] = useState(false);
   const [characters, setCharacters] = useState([]);
   const [game, setGame] = useState(null);
+  const addToast = useToastStore((state) => state.addToast);
+  const { user, isDM } = useAuth();
 
   // ...existing code...
   useEffect(() => {
@@ -25,6 +29,8 @@ export const useGameSocket = (gameId, onJoinedGame) => {
       setConnected(true);
       console.log('🔌 [GameSocket] Conectado, uniéndose a partida:', gameId);
       socket.current.emit('join-game', { gameId, userId: 'current-user-id' });
+      // También unirse al canal del usuario para recibir notificaciones personales
+      socket.current.emit('join-user-channel');
     });
 
     socket.current.on('disconnect', () => {
@@ -35,6 +41,62 @@ export const useGameSocket = (gameId, onJoinedGame) => {
     // Escuchar TODOS los eventos para depuración
     socket.current.onAny((eventName, ...args) => {
       console.log(`📨 [GameSocket] Evento recibido: ${eventName}`, args);
+    });
+
+    // Evento de respuesta de venta (solo para jugadores, no DM)
+    socket.current.on('sell-response', (response) => {
+      console.log('💰 [GameSocket] sell-response recibido:', response);
+
+      // El DM no debe ver este toast
+      if (isDM) {
+        console.log('💰 DM ignorando sell-response');
+        return;
+      }
+
+      try {
+        const { addToast } = useToastStore.getState();
+        if (response.approved) {
+          addToast({
+            type: 'success',
+            message: `✅ Venta aprobada!\n${response.itemName} x${response.quantity} por ${response.totalValue} oro`,
+          });
+        } else {
+          addToast({
+            type: 'error',
+            message: `❌ Venta rechazada\n${response.itemName || 'Item'}: ${response.reason || 'El DM ha rechazado la venta'}`,
+          });
+        }
+      } catch (err) {
+        console.error('❌ Error en sell-response handler:', err);
+      }
+    });
+
+    // Evento de respuesta de tienda (cuando jugador acepta/rechaza oferta del DM)
+    socket.current.on('shop-response', (response) => {
+      console.log('🏪 [GameSocket] shop-response recibido:', response);
+
+      // Solo el DM debe ver este toast
+      if (!isDM) {
+        console.log('🏪 Jugador ignorando shop-response');
+        return;
+      }
+
+      try {
+        const { addToast } = useToastStore.getState();
+        if (response.accepted) {
+          addToast({
+            type: 'success',
+            message: `✅ ${response.characterName} compró ${response.itemSummary} por ${response.totalPrice} oro`,
+          });
+        } else {
+          addToast({
+            type: 'info',
+            message: `❌ ${response.characterName} rechazó la oferta (${response.itemSummary})`,
+          });
+        }
+      } catch (err) {
+        console.error('❌ Error en shop-response handler:', err);
+      }
     });
 
     // Evento de confirmación de unión a la partida

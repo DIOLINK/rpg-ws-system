@@ -12,7 +12,7 @@ import {
 const ItemManager = ({ characters, gameId, onItemAssigned }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('catalog'); // 'catalog', 'create', 'assign'
+  const [activeTab, setActiveTab] = useState('catalog'); // 'catalog', 'create', 'assign', 'shop'
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectedCharacters, setSelectedCharacters] = useState([]);
   const [quantity, setQuantity] = useState(1);
@@ -21,6 +21,10 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
   const [filterRarity, setFilterRarity] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Estado para la tienda (DM vendiendo a jugadores) - Soporta múltiples items
+  const [shopSelectedItems, setShopSelectedItems] = useState([]); // [{item, quantity, price}]
+  const [shopSelectedCharacter, setShopSelectedCharacter] = useState('');
 
   // Estado para crear/editar item
   const [formData, setFormData] = useState({
@@ -282,11 +286,12 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
   };
 
   const renderTabs = () => (
-    <div className="flex gap-2 mb-4 border-b border-gray-700 pb-2">
+    <div className="flex gap-2 mb-4 border-b border-gray-700 pb-2 overflow-x-auto">
       {[
         { id: 'catalog', label: '📦 Catálogo', icon: '📦' },
         { id: 'create', label: '➕ Crear Item', icon: '➕' },
         { id: 'assign', label: '🎁 Asignar', icon: '🎁' },
+        { id: 'shop', label: '🏪 Vender', icon: '🏪' },
       ].map((tab) => (
         <button
           key={tab.id}
@@ -296,7 +301,7 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
             setError('');
             if (tab.id === 'create') resetForm();
           }}
-          className={`px-4 py-2 rounded-t-lg transition-colors ${
+          className={`px-4 py-2 rounded-t-lg transition-colors whitespace-nowrap ${
             activeTab === tab.id
               ? 'bg-purple-600 text-white'
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -770,6 +775,288 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
     </div>
   );
 
+  // Funciones para manejar items de la tienda
+  const addShopItem = (item) => {
+    setShopSelectedItems((prev) => {
+      const existing = prev.find((i) => i.item._id === item._id);
+      if (existing) {
+        return prev.map((i) =>
+          i.item._id === item._id ? { ...i, quantity: i.quantity + 1 } : i,
+        );
+      }
+      return [...prev, { item, quantity: 1, price: item.value || 0 }];
+    });
+  };
+
+  const removeShopItem = (itemId) => {
+    setShopSelectedItems((prev) => prev.filter((i) => i.item._id !== itemId));
+  };
+
+  const updateShopItemQuantity = (itemId, quantity) => {
+    setShopSelectedItems((prev) =>
+      prev.map((i) =>
+        i.item._id === itemId ? { ...i, quantity: Math.max(1, quantity) } : i,
+      ),
+    );
+  };
+
+  const updateShopItemPrice = (itemId, price) => {
+    setShopSelectedItems((prev) =>
+      prev.map((i) =>
+        i.item._id === itemId ? { ...i, price: Math.max(0, price) } : i,
+      ),
+    );
+  };
+
+  const getShopTotalPrice = () => {
+    return shopSelectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  };
+
+  // Función para enviar oferta de compra al jugador (múltiples items)
+  const handleSendShopOffer = async () => {
+    if (shopSelectedItems.length === 0 || !shopSelectedCharacter) {
+      setError('Selecciona al menos un item y un personaje');
+      return;
+    }
+
+    try {
+      setError('');
+      const items = shopSelectedItems.map((i) => ({
+        itemId: i.item._id,
+        quantity: i.quantity,
+        price: i.price,
+      }));
+
+      await itemService.createShopOffer({
+        items,
+        characterId: shopSelectedCharacter,
+        gameId,
+      });
+
+      const itemNames = shopSelectedItems
+        .map((i) => `${i.quantity}x ${i.item.name}`)
+        .join(', ');
+      setSuccess(
+        `Oferta enviada: ${itemNames} por ${getShopTotalPrice()} oro total`,
+      );
+
+      // Limpiar selección
+      setShopSelectedItems([]);
+      setShopSelectedCharacter('');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message || 'Error al enviar oferta');
+    }
+  };
+
+  const renderShop = () => (
+    <div className="space-y-4">
+      <div className="bg-gray-700/50 rounded-lg p-4">
+        <h3 className="text-white font-medium mb-3 flex items-center gap-2">
+          🏪 Vender Items a Jugador
+        </h3>
+        <p className="text-gray-400 text-sm mb-4">
+          Selecciona uno o varios items del catálogo, elige un jugador y
+          establece el precio de cada uno. El jugador recibirá una oferta que
+          puede aceptar o rechazar.
+        </p>
+
+        {/* Items seleccionados para vender */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm text-gray-400">
+              Items a vender ({shopSelectedItems.length})
+            </label>
+            {shopSelectedItems.length > 0 && (
+              <button
+                onClick={() => setShopSelectedItems([])}
+                className="text-xs text-red-400 hover:text-red-300"
+              >
+                Limpiar todo
+              </button>
+            )}
+          </div>
+          {shopSelectedItems.length > 0 ? (
+            <div className="space-y-2 max-h-[250px] overflow-y-auto bg-gray-600/50 rounded-lg p-3">
+              {shopSelectedItems.map((shopItem) => (
+                <div
+                  key={shopItem.item._id}
+                  className="flex items-center gap-2 bg-gray-700 rounded-lg p-2"
+                >
+                  <span className="text-xl">{shopItem.item.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <span
+                      className={`text-sm font-medium ${getRarityInfo(shopItem.item.rarity).color}`}
+                    >
+                      {shopItem.item.name}
+                    </span>
+                    <p className="text-xs text-gray-400">
+                      Base: {shopItem.item.value} oro
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-center">
+                      <span className="text-xs text-gray-400">Cant.</span>
+                      <input
+                        type="number"
+                        value={shopItem.quantity}
+                        onChange={(e) =>
+                          updateShopItemQuantity(
+                            shopItem.item._id,
+                            Number(e.target.value),
+                          )
+                        }
+                        className="w-14 px-1 py-1 bg-gray-600 rounded text-white text-sm text-center"
+                        min="1"
+                      />
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-xs text-gray-400">Precio</span>
+                      <input
+                        type="number"
+                        value={shopItem.price}
+                        onChange={(e) =>
+                          updateShopItemPrice(
+                            shopItem.item._id,
+                            Number(e.target.value),
+                          )
+                        }
+                        className="w-16 px-1 py-1 bg-gray-600 rounded text-white text-sm text-center"
+                        min="0"
+                      />
+                    </div>
+                    <span className="text-xs text-yellow-400 w-16 text-right">
+                      = {shopItem.quantity * shopItem.price} 💰
+                    </span>
+                    <button
+                      onClick={() => removeShopItem(shopItem.item._id)}
+                      className="text-gray-400 hover:text-red-400 ml-1"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {/* Total */}
+              <div className="flex justify-end pt-2 border-t border-gray-600">
+                <span className="text-sm font-medium text-yellow-400">
+                  Total: {getShopTotalPrice()} oro 💰
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm bg-gray-600/50 rounded-lg p-3">
+              👆 Haz clic en items del catálogo abajo para agregarlos
+            </p>
+          )}
+        </div>
+
+        {/* Selección de personaje */}
+        <div className="mb-4">
+          <label className="block text-sm text-gray-400 mb-2">Vender a</label>
+          <select
+            value={shopSelectedCharacter}
+            onChange={(e) => setShopSelectedCharacter(e.target.value)}
+            className="w-full px-3 py-2 bg-gray-600 rounded-lg text-white"
+          >
+            <option value="">Selecciona un personaje...</option>
+            {characters.map((char) => (
+              <option key={char._id} value={char._id}>
+                {char.name} - 💰 {char.gold || 0} oro
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Resumen */}
+        {shopSelectedItems.length > 0 && shopSelectedCharacter && (
+          <div className="bg-gray-800 rounded-lg p-3 mb-4">
+            <p className="text-sm text-gray-300 mb-2">
+              <span className="text-white font-medium">Resumen:</span> Vender a{' '}
+              <span className="text-purple-400">
+                {characters.find((c) => c._id === shopSelectedCharacter)?.name}
+              </span>
+            </p>
+            <ul className="text-xs text-gray-400 space-y-1">
+              {shopSelectedItems.map((si) => (
+                <li key={si.item._id}>
+                  • {si.quantity}x{' '}
+                  <span className={getRarityInfo(si.item.rarity).color}>
+                    {si.item.name}
+                  </span>{' '}
+                  → {si.price * si.quantity} oro
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm font-medium text-yellow-400 mt-2 pt-2 border-t border-gray-600">
+              Total: {getShopTotalPrice()} oro
+            </p>
+          </div>
+        )}
+
+        {/* Botón enviar oferta */}
+        <button
+          onClick={handleSendShopOffer}
+          disabled={shopSelectedItems.length === 0 || !shopSelectedCharacter}
+          className="w-full py-3 bg-yellow-600 hover:bg-yellow-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
+        >
+          📨 Enviar Oferta ({shopSelectedItems.length} item
+          {shopSelectedItems.length !== 1 ? 's' : ''})
+        </button>
+      </div>
+
+      {/* Mini catálogo para seleccionar items */}
+      <div className="bg-gray-700/50 rounded-lg p-4">
+        <h4 className="text-white font-medium mb-3">
+          Seleccionar Items del Catálogo
+        </h4>
+
+        {/* Búsqueda rápida */}
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Buscar item..."
+          className="w-full px-3 py-2 bg-gray-600 rounded-lg text-white text-sm mb-3"
+        />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto">
+          {filteredItems.slice(0, 20).map((item) => {
+            const isSelected = shopSelectedItems.some(
+              (si) => si.item._id === item._id,
+            );
+            return (
+              <button
+                key={item._id}
+                onClick={() => addShopItem(item)}
+                className={`flex items-center gap-2 p-2 rounded-lg text-left transition-colors ${
+                  isSelected
+                    ? 'bg-yellow-600/30 border border-yellow-500'
+                    : 'bg-gray-600 hover:bg-gray-500'
+                }`}
+              >
+                <span className="text-xl">{item.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={`text-sm font-medium truncate ${getRarityInfo(item.rarity).color}`}
+                  >
+                    {item.name}
+                  </p>
+                  <p className="text-xs text-yellow-400">{item.value} oro</p>
+                </div>
+                {isSelected && (
+                  <span className="text-xs bg-yellow-600 text-white px-1.5 py-0.5 rounded">
+                    ✓
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="bg-gray-800 rounded-lg p-4 sm:p-6">
       <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
@@ -797,6 +1084,7 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
           {activeTab === 'catalog' && renderCatalog()}
           {activeTab === 'create' && renderCreateForm()}
           {activeTab === 'assign' && renderAssign()}
+          {activeTab === 'shop' && renderShop()}
         </>
       )}
     </div>

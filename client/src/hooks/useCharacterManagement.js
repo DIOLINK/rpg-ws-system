@@ -179,6 +179,21 @@ export const useCharacterManagement = () => {
             type: amount > 0 ? 'success' : 'info',
             message: `💰 ${amount > 0 ? '+' : ''}${amount} oro`,
           });
+        } else if (action === 'equipped' && itemData?.name) {
+          addToast({
+            type: 'success',
+            message: `⚔️ ${itemData.name} equipado`,
+          });
+        } else if (action === 'unequipped' && itemData?.name) {
+          addToast({
+            type: 'info',
+            message: `❌ ${itemData.name} desequipado`,
+          });
+        } else if (action === 'sold' && itemData?.name) {
+          addToast({
+            type: 'success',
+            message: `💰 ${itemData.name} vendido`,
+          });
         }
       },
     );

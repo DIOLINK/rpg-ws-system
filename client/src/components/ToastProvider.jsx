@@ -17,13 +17,13 @@ const Toast = ({ id, type, message, duration = 3000, actions }) => {
   const getStyles = () => {
     switch (type) {
       case 'success':
-        return 'bg-green-500 text-white';
+        return 'bg-green-700 text-white';
       case 'error':
-        return 'bg-red-500 text-white';
+        return 'bg-red-700 text-white';
       case 'warning':
-        return 'bg-yellow-500 text-black';
+        return 'bg-yellow-600 text-black';
       case 'info':
-        return 'bg-purple-500 text-white';
+        return 'bg-purple-700 text-white';
       default:
         return '';
     }
@@ -55,10 +55,10 @@ const Toast = ({ id, type, message, duration = 3000, actions }) => {
           type === 'error'
             ? '#b91c1c'
             : type === 'success'
-            ? '#059669'
-            : type === 'warning'
-            ? '#eab308'
-            : '#a21caf',
+              ? '#059669'
+              : type === 'warning'
+                ? '#eab308'
+                : '#a21caf',
         backdropFilter: 'blur(2px)',
         color: 'white',
         alignItems: 'center',
@@ -83,8 +83,8 @@ const Toast = ({ id, type, message, duration = 3000, actions }) => {
                 action.variant === 'danger'
                   ? 'bg-red-600 text-white hover:bg-red-700'
                   : action.variant === 'secondary'
-                  ? 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                  : 'bg-white text-gray-800 hover:bg-gray-100'
+                    ? 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                    : 'bg-white text-gray-800 hover:bg-gray-100'
               }`}
               style={{ pointerEvents: 'auto' }}
             >

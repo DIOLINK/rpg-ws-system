@@ -6,6 +6,8 @@ import DMTurnOrderPanel from '../components/DMTurnOrderPanel';
 import { ErrorMessage } from '../components/ErrorMessage';
 import ItemManager from '../components/ItemManager';
 import { Loading } from '../components/Loading';
+import SellRequestsPanel from '../components/SellRequestsPanel';
+import ShopOffersPanel from '../components/ShopOffersPanel';
 import TurnOrderBar from '../components/TurnOrderBar';
 import { useAuth } from '../context/AuthContext';
 import { useGameSocket } from '../hooks/useGameSocket';
@@ -119,10 +121,8 @@ export const GamePage = () => {
     }
   };
 
-  const { connected, characters, setCharacters, emit } = useGameSocket(
-    gameId,
-    fetchGameData,
-  );
+  const { connected, characters, setCharacters, emit, getSocket } =
+    useGameSocket(gameId, fetchGameData);
 
   useEffect(() => {
     fetchGameData();
@@ -233,6 +233,19 @@ export const GamePage = () => {
         koAlert={koAlert}
         statusEffectsApplied={statusEffectsApplied}
       />
+
+      {/* Panel de solicitudes de venta para DM */}
+      {isDM && <SellRequestsPanel socket={getSocket()} gameId={gameId} />}
+
+      {/* Panel de ofertas de compra para jugadores */}
+      {!isDM && myCharacter && (
+        <ShopOffersPanel
+          socket={getSocket()}
+          gameId={gameId}
+          characterId={myCharacter._id}
+          characterGold={myCharacter.gold || 0}
+        />
+      )}
 
       {/* Status Bar - Sticky en mobile */}
       <div className="sticky top-0 z-10 bg-gray-800/95 backdrop-blur-sm rounded-lg p-2 sm:p-3 mb-3 sm:mb-4 shadow-lg">
