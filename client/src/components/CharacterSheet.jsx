@@ -116,7 +116,36 @@ export const CharacterSheet = ({
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const numValue = Math.max(0, Number.parseInt(value) || 0);
+
+    setFormData((prev) => {
+      // Validar que HP esté entre 0 y maxHp
+      if (name === 'hp') {
+        return { ...prev, [name]: Math.min(numValue, prev.maxHp) };
+      }
+      // Validar que mana esté entre 0 y maxMana
+      if (name === 'mana') {
+        return { ...prev, [name]: Math.min(numValue, prev.maxMana) };
+      }
+      // Si se cambia maxHp, ajustar hp si es necesario (mínimo 1 para maxHp)
+      if (name === 'maxHp') {
+        const newMaxHp = Math.max(1, numValue);
+        return {
+          ...prev,
+          [name]: newMaxHp,
+          hp: Math.min(prev.hp, newMaxHp),
+        };
+      }
+      // Si se cambia maxMana, ajustar mana si es necesario (mínimo 0 para maxMana)
+      if (name === 'maxMana') {
+        return {
+          ...prev,
+          [name]: numValue,
+          mana: Math.min(prev.mana, numValue),
+        };
+      }
+      return { ...prev, [name]: value };
+    });
   };
 
   const handleSave = () => {
