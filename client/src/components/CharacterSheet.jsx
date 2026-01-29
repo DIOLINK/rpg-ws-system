@@ -1,10 +1,26 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { MAX_GAMES_DISPLAYED } from '../pages/GameLobby';
+import { classAbilityService } from '../services/classAbilityService';
+import AccordionList from './AccordionList';
+import CharacterStats from './CharacterStats';
+// Iconos por tipo de clase
+const CLASS_ICONS = {
+  warrior: '⚔️',
+  mage: '🪄',
+  rogue: '🗡️',
+  cleric: '⛑️',
+  archer: '🏹',
+  paladin: '🛡️',
+  bard: '🎸',
+  // ...agrega más tipos si es necesario
+  default: '👤',
+};
 
 export const CharacterSheet = ({ character, onUpdate }) => {
   const { isDM } = useAuth();
   const [editing, setEditing] = useState(false);
+  const [classAbilities, setClassAbilities] = useState([]);
   const [formData, setFormData] = useState({
     name: character.name,
     hp: character.stats.hp,
@@ -18,6 +34,16 @@ export const CharacterSheet = ({ character, onUpdate }) => {
   });
 
   const canEdit = isDM || character.canEdit;
+
+  // Cargar habilidades de clase si el personaje no tiene habilidades propias
+  useEffect(() => {
+    if (character.abilities && character.abilities.length > 0) return;
+    if (!character.classType) return;
+    classAbilityService
+      .getByClassType(character.classType)
+      .then(setClassAbilities)
+      .catch(() => setClassAbilities([]));
+  }, [character.abilities, character.classType]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -48,22 +74,38 @@ export const CharacterSheet = ({ character, onUpdate }) => {
     <div className="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl hover:shadow-2xl transition-shadow">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-3">
-        <div className="flex-1">
-          {editing ? (
-            <input
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              className="text-xl sm:text-2xl font-bold bg-gray-700 px-3 py-2 rounded-lg w-full"
-            />
-          ) : (
-            <h2 className="text-xl sm:text-2xl font-bold text-white truncate">
-              {character.name}
-            </h2>
-          )}
-          <p className="text-xs sm:text-sm text-gray-400 mt-1">
-            ID: {character._id.slice(MAX_GAMES_DISPLAYED)}
-          </p>
+        <div className="flex-1 flex items-center gap-3 min-w-0">
+          {/* Icono de clase y badge de nivel */}
+          <div className="relative flex-shrink-0">
+            <span className="text-3xl select-none">
+              {CLASS_ICONS[character.classType] || CLASS_ICONS.default}
+            </span>
+            {/* Badge de nivel */}
+            <span
+              className="absolute -top-1 -right-2 bg-purple-600 text-white text-xs font-bold rounded-full px-1.5 py-0.5 border-2 border-gray-800 shadow"
+              style={{ minWidth: 22, textAlign: 'center', lineHeight: '1' }}
+              title={`Nivel ${character.level}`}
+            >
+              {character.level > 99 ? '+99' : character.level || 1}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            {editing ? (
+              <input
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                className="text-xl sm:text-2xl font-bold bg-gray-700 px-3 py-2 rounded-lg w-full"
+              />
+            ) : (
+              <h2 className="text-xl sm:text-2xl font-bold text-white truncate">
+                {character.name}
+              </h2>
+            )}
+            <p className="text-xs sm:text-sm text-gray-400 mt-1">
+              ID: {character._id.slice(MAX_GAMES_DISPLAYED)}
+            </p>
+          </div>
         </div>
 
         {canEdit && (
@@ -105,6 +147,15 @@ export const CharacterSheet = ({ character, onUpdate }) => {
         </div>
       </div>
 
+      {/* Stats principales */}
+      <CharacterStats
+        stats={formData}
+        editing={editing && isDM}
+        onChange={({ name, value }) =>
+          setFormData((prev) => ({ ...prev, [name]: value }))
+        }
+      />
+
       {/* Habilidades */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
@@ -115,52 +166,51 @@ export const CharacterSheet = ({ character, onUpdate }) => {
             {character.abilities?.length || 0} habilidades
           </span>
         </div>
-        <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
-          {character.abilities && character.abilities.length > 0 ? (
-            character.abilities.map((ability) => (
-              <div
-                key={ability.id}
-                className="bg-gray-700 rounded-lg p-3 flex items-center justify-between hover:bg-gray-600 transition-colors cursor-pointer"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">
-                    {ability.name}
-                  </div>
-                  <div className="text-xs text-gray-400 truncate">
+        {(character.abilities && character.abilities.length > 0
+          ? character.abilities
+          : classAbilities
+        ).length > 0 ? (
+          <AccordionList
+            items={(character.abilities && character.abilities.length > 0
+              ? character.abilities
+              : classAbilities
+            ).map((ability) => ({
+              id: ability.id,
+              title: ability.name,
+              subtitle: ability.manaCost > 0 ? `💙 ${ability.manaCost}` : '',
+              icon: '⚔️',
+              content: (
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">
                     {ability.description}
                   </div>
                   {ability.damage && (
-                    <div className="text-xs text-orange-400 mt-1">
-                      ⚔️ {ability.damage}
+                    <div className="text-xs text-orange-400 mb-1">
+                      Daño: {ability.damage}
                     </div>
                   )}
+                  {isDM &&
+                    character.abilities &&
+                    character.abilities.length > 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdate({ removeAbility: ability.id });
+                        }}
+                        className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-900/30 transition-colors mt-2"
+                      >
+                        🗑️ Eliminar
+                      </button>
+                    )}
                 </div>
-                <div className="flex items-center gap-2 ml-3 flex-shrink-0">
-                  {ability.manaCost > 0 && (
-                    <span className="text-xs text-blue-400">
-                      💙 {ability.manaCost}
-                    </span>
-                  )}
-                  {isDM && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onUpdate({ removeAbility: ability.id });
-                      }}
-                      className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-900/30 transition-colors"
-                    >
-                      🗑️
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-gray-500 text-center py-4 text-sm">
-              No hay habilidades
-            </p>
-          )}
-        </div>
+              ),
+            }))}
+          />
+        ) : (
+          <p className="text-gray-500 text-center py-4 text-sm">
+            No hay habilidades
+          </p>
+        )}
       </div>
 
       {/* Estados */}
@@ -173,29 +223,40 @@ export const CharacterSheet = ({ character, onUpdate }) => {
             {character.status?.length || 0} efectos
           </span>
         </div>
-        <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto custom-scrollbar">
-          {character.status && character.status.length > 0 ? (
-            character.status.map((status) => (
-              <span
-                key={status.id}
-                className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  status.type === 'buff'
-                    ? 'bg-green-600/80'
-                    : status.type === 'debuff'
-                      ? 'bg-red-600/80'
-                      : 'bg-gray-600/80'
-                }`}
-              >
-                {status.name}
-                {status.duration && ` (${status.duration})`}
-              </span>
-            ))
-          ) : (
-            <p className="text-gray-500 text-sm w-full text-center py-2">
-              Sin efectos activos
-            </p>
-          )}
-        </div>
+        {character.status && character.status.length > 0 ? (
+          <AccordionList
+            items={character.status.map((status) => ({
+              id: status.id,
+              title: status.name,
+              subtitle: status.duration ? `Duración: ${status.duration}` : '',
+              icon:
+                status.type === 'buff'
+                  ? '🟢'
+                  : status.type === 'debuff'
+                    ? '🔴'
+                    : '⚪',
+              content: (
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">
+                    {status.description}
+                  </div>
+                  <div className="text-xs mb-1">
+                    Tipo: <span className="font-semibold">{status.type}</span>
+                  </div>
+                  {status.duration && (
+                    <div className="text-xs">
+                      Turnos restantes: {status.duration}
+                    </div>
+                  )}
+                </div>
+              ),
+            }))}
+          />
+        ) : (
+          <p className="text-gray-500 text-sm w-full text-center py-2">
+            Sin efectos activos
+          </p>
+        )}
       </div>
     </div>
   );
