@@ -5,6 +5,7 @@ import { Server } from 'socket.io';
 import { connectDB } from './config/db.js';
 import authRoutes from './routes/auth.js';
 import characterRoutes from './routes/character.js';
+import classAbilityRoutes from './routes/classAbility.js';
 import gameRoutes from './routes/game.js';
 import { setupGameSockets } from './socket/gameSocket.js';
 
@@ -26,7 +27,7 @@ app.use(
   cors({
     origin: process.env.FRONTEND_URL,
     credentials: true,
-  })
+  }),
 );
 app.use(express.json());
 
@@ -34,9 +35,11 @@ app.use(express.json());
 connectDB();
 
 // Rutas
+
 app.use('/api/auth', authRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/characters', characterRoutes);
+app.use('/api/class-abilities', classAbilityRoutes);
 
 // WebSockets
 setupGameSockets(io);

@@ -1,3 +1,34 @@
+// --- ORDEN DE TURNOS ---
+// DM: Actualizar el orden de turnos
+socket.on('dm:update-turn-order', async ({ gameId, turnOrder }) => {
+  if (!(await isDM(socket, gameId))) {
+    socket.emit('error', { message: 'No autorizado' });
+    return;
+  }
+  // Guardar el orden de turnos en memoria o en la base de datos según tu modelo
+  // Aquí solo se emite a todos los jugadores de la partida
+  io.to(`game:${gameId}`).emit('turn-order-updated', {
+    turnOrder,
+    updatedBy: 'dm',
+  });
+});
+
+// DM: Avanzar turno
+socket.on('dm:next-turn', async ({ gameId }) => {
+  // Aquí deberías tener la lógica para avanzar el turno en el backend
+  // Por simplicidad, solo se emite el evento (el cliente debe enviar el nuevo orden o el índice actual)
+  io.to(`game:${gameId}`).emit('turn-next', {
+    updatedBy: 'dm',
+  });
+});
+
+// DM: Forzar turno a un personaje específico
+socket.on('dm:force-turn', async ({ gameId, characterId }) => {
+  io.to(`game:${gameId}`).emit('turn-forced', {
+    characterId,
+    updatedBy: 'dm',
+  });
+});
 import { Character } from '../models/Character.js';
 
 export const setupGameSockets = (io) => {
@@ -78,7 +109,7 @@ export const setupGameSockets = (io) => {
         if (!character) return;
 
         character.abilities = character.abilities.filter(
-          (a) => a.id !== abilityId
+          (a) => a.id !== abilityId,
         );
         character.updatedAt = new Date();
         await character.save();
@@ -88,7 +119,7 @@ export const setupGameSockets = (io) => {
           abilityId,
           updatedBy: 'dm',
         });
-      }
+      },
     );
 
     // DM: Aplicar daño/grupal
@@ -119,7 +150,7 @@ export const setupGameSockets = (io) => {
           updates,
           updatedBy: 'dm',
         });
-      }
+      },
     );
 
     // DM: Añadir estado
@@ -193,7 +224,7 @@ export const setupGameSockets = (io) => {
           updates: sanitizedUpdates,
           updatedBy: 'player',
         });
-      }
+      },
     );
 
     // Jugador: Usar habilidad
@@ -224,7 +255,7 @@ export const setupGameSockets = (io) => {
           maxMana: character.stats.maxMana,
           updatedBy: 'player',
         });
-      }
+      },
     );
 
     socket.on('disconnect', () => {
