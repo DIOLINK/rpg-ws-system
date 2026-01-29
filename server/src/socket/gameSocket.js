@@ -1,35 +1,51 @@
-// --- ORDEN DE TURNOS ---
-// DM: Actualizar el orden de turnos
-socket.on('dm:update-turn-order', async ({ gameId, turnOrder }) => {
-  if (!(await isDM(socket, gameId))) {
-    socket.emit('error', { message: 'No autorizado' });
-    return;
-  }
-  // Guardar el orden de turnos en memoria o en la base de datos según tu modelo
-  // Aquí solo se emite a todos los jugadores de la partida
-  io.to(`game:${gameId}`).emit('turn-order-updated', {
-    turnOrder,
-    updatedBy: 'dm',
-  });
-});
-
-// DM: Avanzar turno
-socket.on('dm:next-turn', async ({ gameId }) => {
-  // Aquí deberías tener la lógica para avanzar el turno en el backend
-  // Por simplicidad, solo se emite el evento (el cliente debe enviar el nuevo orden o el índice actual)
-  io.to(`game:${gameId}`).emit('turn-next', {
-    updatedBy: 'dm',
-  });
-});
-
-// DM: Forzar turno a un personaje específico
-socket.on('dm:force-turn', async ({ gameId, characterId }) => {
-  io.to(`game:${gameId}`).emit('turn-forced', {
-    characterId,
-    updatedBy: 'dm',
-  });
-});
+import { verifyToken } from '../../config/firebaseAdmin.js';
 import { Character } from '../models/Character.js';
+import { Game } from '../models/Game.js';
+
+// Función para calcular iniciativa basada en dexterity
+const calculateInitiative = (characters) => {
+  return characters
+    .map((char) => ({
+      characterId: char._id,
+      name: char.name,
+      initiative: char.stats?.dexterity || 1,
+    }))
+    .sort((a, b) => b.initiative - a.initiative) // Mayor dexterity primero
+    .map((entry, index) => ({ ...entry, position: index }));
+};
+
+// Función para encontrar grupos de empate
+const findTiedGroups = (turnOrder) => {
+  const groups = [];
+  let currentGroup = [];
+  let currentInitiative = null;
+
+  for (const entry of turnOrder) {
+    if (currentInitiative === null || entry.initiative === currentInitiative) {
+      currentGroup.push(entry);
+      currentInitiative = entry.initiative;
+    } else {
+      if (currentGroup.length > 1) {
+        groups.push({
+          initiative: currentInitiative,
+          characters: currentGroup,
+        });
+      }
+      currentGroup = [entry];
+      currentInitiative = entry.initiative;
+    }
+  }
+
+  // Verificar el último grupo
+  if (currentGroup.length > 1) {
+    groups.push({
+      initiative: currentInitiative,
+      characters: currentGroup,
+    });
+  }
+
+  return groups;
+};
 
 export const setupGameSockets = (io) => {
   io.on('connection', (socket) => {
@@ -40,6 +56,396 @@ export const setupGameSockets = (io) => {
       const game = await Game.findById(gameId);
       return game.dmId.toString() === user.sub;
     };
+
+    // --- ORDEN DE TURNOS ---
+
+    // DM: Calcular orden de turnos basado en dexterity
+    socket.on('dm:calculate-turn-order', async ({ gameId }) => {
+      if (!(await isDM(socket, gameId))) {
+        socket.emit('error', { message: 'No autorizado' });
+        return;
+      }
+
+      try {
+        const game = await Game.findById(gameId);
+        if (!game) {
+          socket.emit('error', { message: 'Partida no encontrada' });
+          return;
+        }
+
+        // Obtener todos los personajes de la partida
+        const characterIds = game.players
+          .filter((p) => p.characterId)
+          .map((p) => p.characterId);
+
+        const characters = await Character.find({ _id: { $in: characterIds } });
+
+        // Calcular iniciativa
+        const turnOrder = calculateInitiative(characters);
+
+        // Guardar en la partida
+        game.turnOrder = turnOrder;
+        game.currentTurnIndex = 0;
+        game.combatStarted = true;
+        await game.save();
+
+        // Encontrar empates
+        const tiedGroups = findTiedGroups(turnOrder);
+
+        // Emitir a todos en la partida
+        io.to(`game:${gameId}`).emit('turn-order-calculated', {
+          turnOrder,
+          currentTurnIndex: 0,
+          tiedGroups,
+          updatedBy: 'dm',
+        });
+      } catch (error) {
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    // DM: Resolver empate manualmente (reordenar personajes empatados)
+    socket.on('dm:resolve-tie', async ({ gameId, reorderedCharacters }) => {
+      if (!(await isDM(socket, gameId))) {
+        socket.emit('error', { message: 'No autorizado' });
+        return;
+      }
+
+      try {
+        const game = await Game.findById(gameId);
+        if (!game) {
+          socket.emit('error', { message: 'Partida no encontrada' });
+          return;
+        }
+
+        // Verificar que ninguno de los personajes a reordenar tenga el turno actual
+        const currentTurnCharId =
+          game.turnOrder[game.currentTurnIndex]?.characterId?.toString();
+        const reorderingCurrentTurn = reorderedCharacters.some(
+          (char) => char.characterId.toString() === currentTurnCharId,
+        );
+
+        if (reorderingCurrentTurn) {
+          socket.emit('error', {
+            message:
+              'No puedes cambiar el orden del personaje que tiene el turno actual',
+          });
+          return;
+        }
+
+        // Actualizar las posiciones de los personajes reordenados
+        for (const reordered of reorderedCharacters) {
+          const index = game.turnOrder.findIndex(
+            (t) =>
+              t.characterId.toString() === reordered.characterId.toString(),
+          );
+          if (index !== -1) {
+            game.turnOrder[index].position = reordered.newPosition;
+          }
+        }
+
+        // Reordenar el array según las nuevas posiciones
+        game.turnOrder.sort((a, b) => a.position - b.position);
+
+        // Reasignar posiciones secuenciales
+        game.turnOrder = game.turnOrder.map((entry, index) => ({
+          ...(entry.toObject ? entry.toObject() : entry),
+          position: index,
+        }));
+
+        await game.save();
+
+        // Encontrar empates restantes
+        const tiedGroups = findTiedGroups(game.turnOrder);
+
+        io.to(`game:${gameId}`).emit('turn-order-updated', {
+          turnOrder: game.turnOrder,
+          currentTurnIndex: game.currentTurnIndex,
+          tiedGroups,
+          updatedBy: 'dm',
+        });
+      } catch (error) {
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    // DM: Actualizar el orden de turnos completo
+    socket.on('dm:update-turn-order', async ({ gameId, turnOrder }) => {
+      if (!(await isDM(socket, gameId))) {
+        socket.emit('error', { message: 'No autorizado' });
+        return;
+      }
+
+      try {
+        const game = await Game.findById(gameId);
+        if (!game) {
+          socket.emit('error', { message: 'Partida no encontrada' });
+          return;
+        }
+
+        // Verificar que el personaje con turno actual no cambie de posición
+        const currentTurnCharId =
+          game.turnOrder[game.currentTurnIndex]?.characterId?.toString();
+        const newCurrentIndex = turnOrder.findIndex(
+          (t) => t.characterId.toString() === currentTurnCharId,
+        );
+
+        if (
+          newCurrentIndex !== -1 &&
+          newCurrentIndex !== game.currentTurnIndex
+        ) {
+          socket.emit('error', {
+            message: 'No puedes mover al personaje que tiene el turno actual',
+          });
+          return;
+        }
+
+        game.turnOrder = turnOrder.map((entry, index) => ({
+          ...entry,
+          position: index,
+        }));
+        await game.save();
+
+        const tiedGroups = findTiedGroups(game.turnOrder);
+
+        io.to(`game:${gameId}`).emit('turn-order-updated', {
+          turnOrder: game.turnOrder,
+          currentTurnIndex: game.currentTurnIndex,
+          tiedGroups,
+          updatedBy: 'dm',
+        });
+      } catch (error) {
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    // DM: Avanzar turno
+    socket.on('dm:next-turn', async ({ gameId }) => {
+      if (!(await isDM(socket, gameId))) {
+        socket.emit('error', { message: 'No autorizado' });
+        return;
+      }
+
+      try {
+        const game = await Game.findById(gameId);
+        if (!game || game.turnOrder.length === 0) {
+          socket.emit('error', { message: 'No hay orden de turnos' });
+          return;
+        }
+
+        // Avanzar al siguiente turno (circular)
+        game.currentTurnIndex =
+          (game.currentTurnIndex + 1) % game.turnOrder.length;
+        await game.save();
+
+        io.to(`game:${gameId}`).emit('turn-advanced', {
+          currentTurnIndex: game.currentTurnIndex,
+          currentCharacter: game.turnOrder[game.currentTurnIndex],
+          updatedBy: 'dm',
+        });
+      } catch (error) {
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    // DM: Forzar turno a un personaje específico
+    socket.on('dm:force-turn', async ({ gameId, characterId }) => {
+      if (!(await isDM(socket, gameId))) {
+        socket.emit('error', { message: 'No autorizado' });
+        return;
+      }
+
+      try {
+        const game = await Game.findById(gameId);
+        if (!game) {
+          socket.emit('error', { message: 'Partida no encontrada' });
+          return;
+        }
+
+        const index = game.turnOrder.findIndex(
+          (t) => t.characterId.toString() === characterId,
+        );
+
+        if (index === -1) {
+          socket.emit('error', {
+            message: 'Personaje no encontrado en el orden de turnos',
+          });
+          return;
+        }
+
+        game.currentTurnIndex = index;
+        await game.save();
+
+        io.to(`game:${gameId}`).emit('turn-forced', {
+          characterId,
+          currentTurnIndex: index,
+          currentCharacter: game.turnOrder[index],
+          updatedBy: 'dm',
+        });
+      } catch (error) {
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    // DM: Agregar personaje (NPC/Enemigo) al orden de turnos
+    socket.on('dm:add-to-turn-order', async ({ gameId, characterId }) => {
+      if (!(await isDM(socket, gameId))) {
+        socket.emit('error', { message: 'No autorizado' });
+        return;
+      }
+
+      try {
+        const game = await Game.findById(gameId);
+        if (!game) {
+          socket.emit('error', { message: 'Partida no encontrada' });
+          return;
+        }
+
+        const character = await Character.findById(characterId);
+        if (!character) {
+          socket.emit('error', { message: 'Personaje no encontrado' });
+          return;
+        }
+
+        // Verificar que no esté ya en el orden
+        const alreadyInOrder = game.turnOrder.some(
+          (t) => t.characterId.toString() === characterId,
+        );
+
+        if (alreadyInOrder) {
+          socket.emit('error', {
+            message: 'El personaje ya está en el orden de turnos',
+          });
+          return;
+        }
+
+        // Agregar el nuevo personaje
+        const newEntry = {
+          characterId: character._id,
+          name: character.name,
+          initiative: character.stats?.dexterity || 1,
+          position: game.turnOrder.length,
+        };
+
+        // Agregar y recalcular posiciones
+        game.turnOrder.push(newEntry);
+
+        // Reordenar por iniciativa
+        game.turnOrder.sort((a, b) => b.initiative - a.initiative);
+
+        // Reasignar posiciones
+        game.turnOrder = game.turnOrder.map((entry, index) => ({
+          ...(entry.toObject ? entry.toObject() : entry),
+          position: index,
+        }));
+
+        // Ajustar el índice del turno actual si es necesario
+        const currentCharId =
+          game.turnOrder[game.currentTurnIndex]?.characterId?.toString();
+        if (currentCharId) {
+          const newIndex = game.turnOrder.findIndex(
+            (t) => t.characterId.toString() === currentCharId,
+          );
+          if (newIndex !== -1) {
+            game.currentTurnIndex = newIndex;
+          }
+        }
+
+        await game.save();
+
+        const tiedGroups = findTiedGroups(game.turnOrder);
+
+        io.to(`game:${gameId}`).emit('turn-order-updated', {
+          turnOrder: game.turnOrder,
+          currentTurnIndex: game.currentTurnIndex,
+          tiedGroups,
+          addedCharacter: newEntry,
+          updatedBy: 'dm',
+        });
+      } catch (error) {
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    // DM: Remover personaje del orden de turnos
+    socket.on('dm:remove-from-turn-order', async ({ gameId, characterId }) => {
+      if (!(await isDM(socket, gameId))) {
+        socket.emit('error', { message: 'No autorizado' });
+        return;
+      }
+
+      try {
+        const game = await Game.findById(gameId);
+        if (!game) {
+          socket.emit('error', { message: 'Partida no encontrada' });
+          return;
+        }
+
+        // Verificar que no sea el personaje con turno actual
+        const currentTurnCharId =
+          game.turnOrder[game.currentTurnIndex]?.characterId?.toString();
+
+        if (currentTurnCharId === characterId) {
+          socket.emit('error', {
+            message:
+              'No puedes remover al personaje que tiene el turno actual. Avanza el turno primero.',
+          });
+          return;
+        }
+
+        // Remover el personaje
+        game.turnOrder = game.turnOrder.filter(
+          (t) => t.characterId.toString() !== characterId,
+        );
+
+        // Reasignar posiciones
+        game.turnOrder = game.turnOrder.map((entry, index) => ({
+          ...(entry.toObject ? entry.toObject() : entry),
+          position: index,
+        }));
+
+        // Ajustar el índice del turno actual
+        if (game.currentTurnIndex >= game.turnOrder.length) {
+          game.currentTurnIndex = 0;
+        }
+
+        await game.save();
+
+        const tiedGroups = findTiedGroups(game.turnOrder);
+
+        io.to(`game:${gameId}`).emit('turn-order-updated', {
+          turnOrder: game.turnOrder,
+          currentTurnIndex: game.currentTurnIndex,
+          tiedGroups,
+          removedCharacterId: characterId,
+          updatedBy: 'dm',
+        });
+      } catch (error) {
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    // Obtener el estado actual del orden de turnos
+    socket.on('get-turn-order', async ({ gameId }) => {
+      try {
+        const game = await Game.findById(gameId);
+        if (!game) {
+          socket.emit('error', { message: 'Partida no encontrada' });
+          return;
+        }
+
+        const tiedGroups = findTiedGroups(game.turnOrder);
+
+        socket.emit('turn-order-state', {
+          turnOrder: game.turnOrder,
+          currentTurnIndex: game.currentTurnIndex,
+          combatStarted: game.combatStarted,
+          tiedGroups,
+        });
+      } catch (error) {
+        socket.emit('error', { message: error.message });
+      }
+    });
 
     // Unirse a una partida
     socket.on('join-game', async ({ gameId, userId }) => {

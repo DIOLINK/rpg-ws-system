@@ -11,12 +11,24 @@ const gameSchema = new mongoose.Schema({
   ],
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now },
+
+  // Sistema de turnos basado en iniciativa (dexterity)
+  turnOrder: [
+    {
+      characterId: { type: mongoose.Schema.Types.ObjectId, ref: 'Character' },
+      name: { type: String },
+      initiative: { type: Number, default: 0 },
+      position: { type: Number }, // Posición en el orden de turnos
+    },
+  ],
+  currentTurnIndex: { type: Number, default: 0 }, // Índice del personaje con el turno actual
+  combatStarted: { type: Boolean, default: false }, // Indica si el combate ha iniciado
 });
 
 // Método estático para asignar un personaje a una partida
 gameSchema.statics.assignCharacterToGame = async function (
   gameId,
-  characterId
+  characterId,
 ) {
   const game = await this.findById(gameId);
   if (!game) {
