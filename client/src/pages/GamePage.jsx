@@ -16,7 +16,6 @@ export const GamePage = () => {
   const navigate = useNavigate();
   const { gameId } = useParams();
   const { user, isDM } = useAuth();
-  console.log('🚀 ~ GamePage ~ user:', user);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
