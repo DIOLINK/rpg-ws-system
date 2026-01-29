@@ -34,6 +34,7 @@ export const CharacterSheet = ({
   const [formData, setFormData] = useState({
     name: character.name,
     classType: character.classType || '',
+    description: character.description || '',
     hp: character.stats.hp,
     maxHp: character.stats.maxHp,
     mana: character.stats.mana,
@@ -50,6 +51,7 @@ export const CharacterSheet = ({
       setFormData({
         name: character.name,
         classType: character.classType || '',
+        description: character.description || '',
         hp: character.stats.hp,
         maxHp: character.stats.maxHp,
         mana: character.stats.mana,
@@ -152,6 +154,7 @@ export const CharacterSheet = ({
     onUpdate({
       name: formData.name,
       classType: formData.classType,
+      description: formData.description,
       stats: {
         hp: Number.parseInt(formData.hp),
         maxHp: Number.parseInt(formData.maxHp),
@@ -171,9 +174,7 @@ export const CharacterSheet = ({
 
   // Función para voltear la carta
   const handleFlip = () => {
-    if (!editing) {
-      setIsFlipped(!isFlipped);
-    }
+    setIsFlipped(!isFlipped);
   };
 
   return (
@@ -479,50 +480,112 @@ export const CharacterSheet = ({
               </span>
             </div>
             {(() => {
-              const abilitiesToShow =
-                character.abilities && character.abilities.length > 0
-                  ? character.abilities
-                  : classAbilities;
-              return abilitiesToShow.length > 0 ? (
-                <AccordionList
-                  items={abilitiesToShow.map((ability) => ({
-                    id: ability.id,
-                    title: ability.name,
-                    subtitle:
-                      ability.manaCost > 0 ? `💙 ${ability.manaCost}` : '',
-                    icon:
-                      CLASS_ICONS[character.classType] || CLASS_ICONS.default,
-                    content: (
-                      <div>
-                        <div className="text-xs text-gray-400 mb-1">
-                          {ability.description}
-                        </div>
-                        {ability.damage && (
-                          <div className="text-xs text-orange-400 mb-1">
-                            Daño: {ability.damage}
-                          </div>
-                        )}
-                        {isDM &&
-                          character.abilities &&
-                          character.abilities.length > 0 && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onUpdate({ removeAbility: ability.id });
-                              }}
-                              className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-900/30 transition-colors mt-2"
-                            >
-                              🗑️ Eliminar
-                            </button>
-                          )}
-                      </div>
-                    ),
-                  }))}
-                />
-              ) : (
-                <p className="text-gray-500 text-center py-4 text-sm">
-                  No hay habilidades
-                </p>
+              const ownAbilities = character.abilities || [];
+              // Filtrar habilidades de clase que el personaje NO tiene todavía
+              const availableClassAbilities = classAbilities.filter(
+                (ca) => !ownAbilities.some((oa) => oa.name === ca.name),
+              );
+
+              return (
+                <>
+                  {/* Habilidades del personaje (guardadas) */}
+                  {ownAbilities.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-xs text-green-400 mb-2">
+                        ✅ Habilidades del personaje:
+                      </p>
+                      <AccordionList
+                        items={ownAbilities.map((ability) => ({
+                          id: ability.id || ability._id,
+                          title: ability.name,
+                          subtitle:
+                            ability.manaCost > 0
+                              ? `💙 ${ability.manaCost}`
+                              : '',
+                          icon:
+                            CLASS_ICONS[character.classType] ||
+                            CLASS_ICONS.default,
+                          content: (
+                            <div>
+                              <div className="text-xs text-gray-400 mb-1">
+                                {ability.description}
+                              </div>
+                              {ability.damage && (
+                                <div className="text-xs text-orange-400 mb-1">
+                                  Daño: {ability.damage}
+                                </div>
+                              )}
+                              {canEdit && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onUpdate({ removeAbility: ability.id });
+                                  }}
+                                  className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-900/30 transition-colors mt-2"
+                                >
+                                  🗑️ Eliminar
+                                </button>
+                              )}
+                            </div>
+                          ),
+                        }))}
+                      />
+                    </div>
+                  )}
+
+                  {/* Habilidades de clase disponibles para añadir */}
+                  {availableClassAbilities.length > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-400 mb-2">
+                        📚 Habilidades de clase disponibles:
+                      </p>
+                      <AccordionList
+                        items={availableClassAbilities.map((ability) => ({
+                          id: ability.id || ability._id || ability.name,
+                          title: ability.name,
+                          subtitle:
+                            ability.manaCost > 0
+                              ? `💙 ${ability.manaCost}`
+                              : '',
+                          icon:
+                            CLASS_ICONS[character.classType] ||
+                            CLASS_ICONS.default,
+                          content: (
+                            <div>
+                              <div className="text-xs text-gray-400 mb-1">
+                                {ability.description}
+                              </div>
+                              {ability.damage && (
+                                <div className="text-xs text-orange-400 mb-1">
+                                  Daño: {ability.damage}
+                                </div>
+                              )}
+                              {canEdit && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onUpdate({ addAbility: ability });
+                                  }}
+                                  className="text-green-400 hover:text-green-300 p-1 rounded hover:bg-green-900/30 transition-colors mt-2"
+                                >
+                                  ➕ Añadir al personaje
+                                </button>
+                              )}
+                            </div>
+                          ),
+                        }))}
+                      />
+                    </div>
+                  )}
+
+                  {/* Si no hay ninguna habilidad */}
+                  {ownAbilities.length === 0 &&
+                    availableClassAbilities.length === 0 && (
+                      <p className="text-gray-500 text-center py-4 text-sm">
+                        No hay habilidades
+                      </p>
+                    )}
+                </>
               );
             })()}
           </div>
@@ -608,7 +671,15 @@ export const CharacterSheet = ({
               📖 Descripción
             </h3>
             <div className="bg-gray-700/50 rounded-lg p-4">
-              {character.description ? (
+              {editing ? (
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  placeholder="Escribe la descripción del personaje..."
+                  className="w-full bg-gray-600 text-sm text-gray-300 leading-relaxed rounded-lg p-2 min-h-[100px] resize-y focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              ) : character.description ? (
                 <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
                   {character.description}
                 </p>

@@ -172,11 +172,48 @@ export const GamePage = () => {
     const character = characters.find((c) => c.playerId === user._id);
     if (!character) return;
 
+    // Si es añadir habilidad, usar evento específico
+    if (updates.addAbility) {
+      emit('player:add-ability', {
+        characterId: character._id,
+        ability: updates.addAbility,
+        gameId,
+      });
+      return;
+    }
+    // Si es eliminar habilidad, usar evento específico
+    if (updates.removeAbility) {
+      emit('player:remove-ability', {
+        characterId: character._id,
+        abilityId: updates.removeAbility,
+        gameId,
+      });
+      return;
+    }
+
     emit('player:update-character', { characterId: character._id, updates });
   };
 
   // DM: Actualizar cualquier personaje
   const handleDMCharacterUpdate = (characterId, updates) => {
+    // Si es eliminar habilidad, usar evento específico
+    if (updates.removeAbility) {
+      emit('dm:remove-ability', {
+        characterId,
+        abilityId: updates.removeAbility,
+        gameId,
+      });
+      return;
+    }
+    // Si es añadir habilidad, usar evento específico
+    if (updates.addAbility) {
+      emit('dm:add-ability', {
+        characterId,
+        ability: updates.addAbility,
+        gameId,
+      });
+      return;
+    }
     emit('dm:update-character', { characterId, updates, gameId });
   };
 
