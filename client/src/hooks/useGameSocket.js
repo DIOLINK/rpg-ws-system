@@ -17,15 +17,24 @@ export const useGameSocket = (gameId, onJoinedGame) => {
       auth: {
         token: authService.getToken(),
       },
+      withCredentials: true,
+      transports: ['websocket', 'polling'],
     });
 
     socket.current.on('connect', () => {
       setConnected(true);
+      console.log('🔌 [GameSocket] Conectado, uniéndose a partida:', gameId);
       socket.current.emit('join-game', { gameId, userId: 'current-user-id' });
     });
 
     socket.current.on('disconnect', () => {
       setConnected(false);
+      console.log('🔌 [GameSocket] Desconectado');
+    });
+
+    // Escuchar TODOS los eventos para depuración
+    socket.current.onAny((eventName, ...args) => {
+      console.log(`📨 [GameSocket] Evento recibido: ${eventName}`, args);
     });
 
     // Evento de confirmación de unión a la partida
@@ -37,11 +46,25 @@ export const useGameSocket = (gameId, onJoinedGame) => {
     });
 
     // Eventos de personaje
-    socket.current.on('character-updated', ({ characterId, canEdit }) => {
+    socket.current.on('character-updated', (updatedData) => {
+      console.log('📥 [GameSocket] character-updated:', updatedData);
       setCharacters((prev) =>
-        prev.map((char) =>
-          char._id === characterId ? { ...char, canEdit } : char,
-        ),
+        prev.map((char) => {
+          if (
+            char._id === updatedData.characterId ||
+            char._id === updatedData._id
+          ) {
+            return {
+              ...char,
+              ...updatedData,
+              // Mezclar stats correctamente si vienen en la actualización
+              stats: updatedData.stats
+                ? { ...char.stats, ...updatedData.stats }
+                : char.stats,
+            };
+          }
+          return char;
+        }),
       );
     });
 

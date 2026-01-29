@@ -33,6 +33,7 @@ export const CharacterSheet = ({
   const [showManaChange, setShowManaChange] = useState(false);
   const [formData, setFormData] = useState({
     name: character.name,
+    classType: character.classType || '',
     hp: character.stats.hp,
     maxHp: character.stats.maxHp,
     mana: character.stats.mana,
@@ -42,6 +43,24 @@ export const CharacterSheet = ({
     dexterity: character.stats.dexterity,
     defense: character.stats.defense,
   });
+
+  // Sincronizar formData cuando el character cambia (por actualizaciones de socket)
+  useEffect(() => {
+    if (!editing) {
+      setFormData({
+        name: character.name,
+        classType: character.classType || '',
+        hp: character.stats.hp,
+        maxHp: character.stats.maxHp,
+        mana: character.stats.mana,
+        maxMana: character.stats.maxMana,
+        strength: character.stats.strength,
+        intelligence: character.stats.intelligence,
+        dexterity: character.stats.dexterity,
+        defense: character.stats.defense,
+      });
+    }
+  }, [character, editing]);
 
   const canEdit = isDM || character.canEdit;
 
@@ -103,6 +122,7 @@ export const CharacterSheet = ({
   const handleSave = () => {
     onUpdate({
       name: formData.name,
+      classType: formData.classType,
       stats: {
         hp: Number.parseInt(formData.hp),
         maxHp: Number.parseInt(formData.maxHp),
@@ -162,9 +182,28 @@ export const CharacterSheet = ({
             <div className="flex-1 flex items-center gap-3 min-w-0">
               {/* Icono de clase y badge de nivel */}
               <div className="relative shrink-0">
-                <span className="text-3xl select-none">
-                  {CLASS_ICONS[character.classType] || CLASS_ICONS.default}
-                </span>
+                {editing ? (
+                  <select
+                    name="classType"
+                    value={formData.classType}
+                    onChange={handleInputChange}
+                    className="text-2xl bg-gray-700 rounded-lg p-1 cursor-pointer"
+                    title="Seleccionar clase"
+                  >
+                    <option value="">👤</option>
+                    <option value="guerrero">⚔️ Guerrero</option>
+                    <option value="mago">🪄 Mago</option>
+                    <option value="pícaro">🗡️ Pícaro</option>
+                    <option value="clérigo">⛑️ Clérigo</option>
+                    <option value="arquero">🏹 Arquero</option>
+                    <option value="paladín">🛡️ Paladín</option>
+                    <option value="bardo">🎸 Bardo</option>
+                  </select>
+                ) : (
+                  <span className="text-3xl select-none">
+                    {CLASS_ICONS[character.classType] || CLASS_ICONS.default}
+                  </span>
+                )}
                 {/* Badge de nivel */}
                 <span
                   className="absolute -top-1 -right-2 bg-purple-600 text-white text-xs font-bold rounded-full px-1.5 py-0.5 border-2 border-gray-800 shadow"
@@ -227,9 +266,30 @@ export const CharacterSheet = ({
             <div className="flex items-center mb-1 justify-between">
               <div className="flex items-center">
                 <span className="text-red-400 text-lg mr-2">❤️</span>
-                <span className="text-xs text-gray-300">
-                  HP: {character.stats.hp} / {character.stats.maxHp}
-                </span>
+                {editing ? (
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-300">HP:</span>
+                    <input
+                      type="number"
+                      name="hp"
+                      value={formData.hp}
+                      onChange={handleInputChange}
+                      className="w-12 px-1 py-0.5 bg-gray-600 rounded text-xs text-center"
+                    />
+                    <span className="text-xs text-gray-300">/</span>
+                    <input
+                      type="number"
+                      name="maxHp"
+                      value={formData.maxHp}
+                      onChange={handleInputChange}
+                      className="w-12 px-1 py-0.5 bg-gray-600 rounded text-xs text-center"
+                    />
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-300">
+                    HP: {character.stats.hp} / {character.stats.maxHp}
+                  </span>
+                )}
               </div>
               {/* Indicador de cambio HP */}
               {showHpChange && hpChange !== 0 && (
@@ -280,9 +340,30 @@ export const CharacterSheet = ({
             <div className="flex items-center mb-1 justify-between">
               <div className="flex items-center">
                 <span className="text-blue-400 text-lg mr-2">💙</span>
-                <span className="text-xs text-gray-300">
-                  MP: {character.stats.mana} / {character.stats.maxMana}
-                </span>
+                {editing ? (
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-300">MP:</span>
+                    <input
+                      type="number"
+                      name="mana"
+                      value={formData.mana}
+                      onChange={handleInputChange}
+                      className="w-12 px-1 py-0.5 bg-gray-600 rounded text-xs text-center"
+                    />
+                    <span className="text-xs text-gray-300">/</span>
+                    <input
+                      type="number"
+                      name="maxMana"
+                      value={formData.maxMana}
+                      onChange={handleInputChange}
+                      className="w-12 px-1 py-0.5 bg-gray-600 rounded text-xs text-center"
+                    />
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-300">
+                    MP: {character.stats.mana} / {character.stats.maxMana}
+                  </span>
+                )}
               </div>
               {/* Indicador de cambio Mana */}
               {showManaChange && manaChange !== 0 && (

@@ -175,6 +175,11 @@ export const GamePage = () => {
     emit('player:update-character', { characterId: character._id, updates });
   };
 
+  // DM: Actualizar cualquier personaje
+  const handleDMCharacterUpdate = (characterId, updates) => {
+    emit('dm:update-character', { characterId, updates, gameId });
+  };
+
   const handleDMCommand = (command, data) => {
     console.log('🎮 DM Command:', command, { ...data, gameId });
     emit(`dm:${command}`, { ...data, gameId });
@@ -347,7 +352,9 @@ export const GamePage = () => {
                 👥 Otros Personajes
               </h2>
               <p className="text-xs sm:text-sm text-gray-500">
-                Vista de solo lectura para otros personajes
+                {isDM
+                  ? 'Como DM puedes editar todos los personajes'
+                  : 'Vista de solo lectura para otros personajes'}
               </p>
             </div>
 
@@ -360,7 +367,13 @@ export const GamePage = () => {
                 >
                   <CharacterSheet
                     character={char}
-                    onUpdate={() => {}} // Solo lectura
+                    onUpdate={
+                      isDM
+                        ? (updates) =>
+                            handleDMCharacterUpdate(char._id, updates)
+                        : () => {}
+                    }
+                    canEdit={isDM}
                     statChanges={statChanges}
                     isKO={isCharacterKO(char._id)}
                     koWarning={char.koWarning}

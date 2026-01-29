@@ -31,6 +31,8 @@ export const useCharacterManagement = () => {
 
     socket.current = io(`${BASE_URL}`, {
       auth: { token },
+      withCredentials: true,
+      transports: ['websocket', 'polling'],
     });
 
     socket.current.on('connect', () => {
@@ -59,10 +61,136 @@ export const useCharacterManagement = () => {
 
     // Evento de personaje actualizado
     socket.current.on('character-updated', (updatedData) => {
+      console.log('📥 character-updated:', updatedData);
+      setCharacters((prev) =>
+        prev.map((char) => {
+          if (
+            char._id === updatedData.characterId ||
+            char._id === updatedData._id
+          ) {
+            return {
+              ...char,
+              ...updatedData,
+              // Mezclar stats correctamente si vienen en la actualización
+              stats: updatedData.stats
+                ? { ...char.stats, ...updatedData.stats }
+                : char.stats,
+            };
+          }
+          return char;
+        }),
+      );
+    });
+
+    // Evento de habilidad añadida
+    socket.current.on('ability-added', ({ characterId, ability }) => {
+      console.log('📥 ability-added:', { characterId, ability });
       setCharacters((prev) =>
         prev.map((char) =>
-          char._id === updatedData.characterId || char._id === updatedData._id
-            ? { ...char, ...updatedData }
+          char._id === characterId
+            ? { ...char, abilities: [...(char.abilities || []), ability] }
+            : char,
+        ),
+      );
+      addToast({
+        type: 'info',
+        message: `Nueva habilidad añadida: ${ability.name}`,
+      });
+    });
+
+    // Evento de habilidad eliminada
+    socket.current.on('ability-removed', ({ characterId, abilityId }) => {
+      console.log('📥 ability-removed:', { characterId, abilityId });
+      setCharacters((prev) =>
+        prev.map((char) =>
+          char._id === characterId
+            ? {
+                ...char,
+                abilities: (char.abilities || []).filter(
+                  (a) => a.id !== abilityId,
+                ),
+              }
+            : char,
+        ),
+      );
+    });
+
+    // Evento de estado añadido
+    socket.current.on('status-added', ({ characterId, status }) => {
+      console.log('📥 status-added:', { characterId, status });
+      setCharacters((prev) =>
+        prev.map((char) =>
+          char._id === characterId
+            ? { ...char, status: [...(char.status || []), status] }
+            : char,
+        ),
+      );
+      addToast({
+        type: status.type === 'buff' ? 'success' : 'warning',
+        message: `Estado añadido: ${status.name}`,
+      });
+    });
+
+    // Evento de estado eliminado
+    socket.current.on('status-removed', ({ characterId, statusId }) => {
+      console.log('📥 status-removed:', { characterId, statusId });
+      setCharacters((prev) =>
+        prev.map((char) =>
+          char._id === characterId
+            ? {
+                ...char,
+                status: (char.status || []).filter((s) => s.id !== statusId),
+              }
+            : char,
+        ),
+      );
+    });
+
+    // Evento de daño aplicado
+    socket.current.on('damage-applied', ({ updates }) => {
+      console.log('📥 damage-applied:', updates);
+      setCharacters((prev) =>
+        prev.map((char) => {
+          const update = updates.find((u) => u.characterId === char._id);
+          if (update) {
+            return {
+              ...char,
+              stats: { ...char.stats, hp: update.hp },
+              koWarning: update.koWarning,
+            };
+          }
+          return char;
+        }),
+      );
+    });
+
+    // Evento de HP modificado
+    socket.current.on(
+      'hp-modified',
+      ({ characterId, newHp, koWarning, isKO }) => {
+        console.log('📥 hp-modified:', { characterId, newHp });
+        setCharacters((prev) =>
+          prev.map((char) =>
+            char._id === characterId
+              ? {
+                  ...char,
+                  stats: { ...char.stats, hp: newHp },
+                  koWarning,
+                  isKO,
+                }
+              : char,
+          ),
+        );
+      },
+    );
+
+    // Evento de Mana modificado
+    socket.current.on('mana-modified', ({ characterId, newMana }) => {
+      console.log('📥 mana-modified:', { characterId, newMana });
+      setCharacters((prev) =>
+        prev.map((char) =>
+          char._id === characterId
+            ? { ...char, stats: { ...char.stats, mana: newMana } }
             : char,
         ),
       );
