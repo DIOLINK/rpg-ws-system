@@ -40,7 +40,7 @@ export const GamePage = () => {
     }
   };
 
-  const { _socket, connected, characters, setCharacters, emit } = useGameSocket(
+  const { connected, characters, setCharacters, emit } = useGameSocket(
     gameId,
     fetchGameData,
   );
@@ -57,14 +57,20 @@ export const GamePage = () => {
     (c) => !c.player || c.player._id !== user._id,
   );
 
-  // Orden de turnos (puedes ajustar la lógica de inicialización si lo deseas)
-  const initialTurnOrder = characters.map((c) => ({
-    id: c._id,
-    name: c.name,
-    player: c.player,
-  }));
-  const { turnOrder, setTurnOrder, nextTurn, forceTurn, currentTurn } =
-    useTurnOrderSocket(gameId, initialTurnOrder);
+  // Sistema de turnos con iniciativa basada en dexterity
+  const {
+    turnOrder,
+    currentTurnIndex,
+    tiedGroups,
+    combatStarted,
+    loading: turnLoading,
+    calculateTurnOrder,
+    resolveTie,
+    nextTurn,
+    forceTurn,
+    addToTurnOrder,
+    removeFromTurnOrder,
+  } = useTurnOrderSocket(gameId);
 
   // Redirigir a asignación de personaje si el usuario no tiene personaje en la partida y no es DM
   useEffect(() => {
@@ -117,8 +123,9 @@ export const GamePage = () => {
       {/* Barra de turnos */}
       <TurnOrderBar
         turnOrder={turnOrder}
-        currentTurn={currentTurn}
+        currentTurnIndex={currentTurnIndex}
         userId={user._id}
+        combatStarted={combatStarted}
         onClickCharacter={isDM ? (char) => forceTurn(char.id) : undefined}
       />
 
@@ -129,7 +136,27 @@ export const GamePage = () => {
             isDM ? 'lg:grid-cols-3' : ''
           } gap-3 sm:gap-4 md:gap-6`}
         >
-          {/* Panel DM - Ocupa toda la fila en desktop */}
+          {/* Panel de Control de Turnos para el DM */}
+          {isDM && (
+            <div className="lg:col-span-3">
+              <DMTurnOrderPanel
+                turnOrder={turnOrder}
+                currentTurnIndex={currentTurnIndex}
+                tiedGroups={tiedGroups}
+                combatStarted={combatStarted}
+                loading={turnLoading}
+                characters={characters}
+                onCalculateTurnOrder={calculateTurnOrder}
+                onNextTurn={nextTurn}
+                onForceTurn={forceTurn}
+                onAddToTurnOrder={addToTurnOrder}
+                onRemoveFromTurnOrder={removeFromTurnOrder}
+                onResolveTie={resolveTie}
+              />
+            </div>
+          )}
+
+          {/* Panel DM - Acciones de personajes */}
           {isDM && (
             <div className="lg:col-span-3">
               <DMPanel characters={characters} onDMCommand={handleDMCommand} />

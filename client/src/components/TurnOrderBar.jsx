@@ -3,29 +3,46 @@ import TurnOrderMini from './TurnOrderMini';
 
 /**
  * Barra de orden de turnos con integración de socket.
+ * Adaptada para el nuevo sistema de iniciativa basado en dexterity.
  * @param {object} props
- * @param {array} props.turnOrder - Array de personajes en orden de turno
- * @param {number} props.currentTurn - Índice del turno actual
+ * @param {array} props.turnOrder - Array de personajes en orden de turno (del servidor)
+ * @param {number} props.currentTurnIndex - Índice del turno actual
  * @param {string} props.userId - ID del usuario actual
- * @param {function} [props.onClickCharacter] - Acción al hacer clic en personaje
+ * @param {boolean} props.combatStarted - Si el combate ha iniciado
+ * @param {function} [props.onClickCharacter] - Acción al hacer clic en personaje (solo DM)
  */
 export default function TurnOrderBar({
   turnOrder,
-  currentTurn,
+  currentTurnIndex,
   userId,
+  combatStarted,
   onClickCharacter,
 }) {
-  // Marca el personaje actual y el tuyo
+  // Transformar el formato del servidor al formato del componente visual
   const displayOrder = useMemo(
     () =>
-      turnOrder.map((char, idx) => ({
-        ...char,
-        isCurrent: idx === currentTurn,
-        isYou: char.player?._id === userId,
-        isPlayer: !!char.player,
+      turnOrder.map((entry, idx) => ({
+        id: entry.characterId,
+        name: entry.name,
+        initiative: entry.initiative,
+        position: entry.position,
+        isCurrent: idx === currentTurnIndex,
+        // Nota: necesitarías pasar la info del player si quieres mostrar "Tú"
+        isYou: false, // Se puede mejorar pasando los characters con player info
+        isPlayer: true,
       })),
-    [turnOrder, currentTurn, userId],
+    [turnOrder, currentTurnIndex],
   );
+
+  if (!combatStarted || turnOrder.length === 0) {
+    return (
+      <div className="mb-4 flex justify-center">
+        <div className="bg-gray-900/80 rounded-lg px-4 py-2 text-gray-500 text-sm">
+          ⏳ Esperando inicio del combate...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-4 flex justify-center">
@@ -36,3 +53,24 @@ export default function TurnOrderBar({
     </div>
   );
 }
+
+TurnOrderBar.propTypes = {
+  turnOrder: PropTypes.arrayOf(
+    PropTypes.shape({
+      characterId: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
+      name: PropTypes.string,
+      initiative: PropTypes.number,
+      position: PropTypes.number,
+    }),
+  ),
+  currentTurnIndex: PropTypes.number,
+  userId: PropTypes.string,
+  combatStarted: PropTypes.bool,
+  onClickCharacter: PropTypes.func,
+};
+
+TurnOrderBar.defaultProps = {
+  turnOrder: [],
+  currentTurnIndex: 0,
+  combatStarted: false,
+};
