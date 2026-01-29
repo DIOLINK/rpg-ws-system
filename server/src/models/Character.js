@@ -27,6 +27,17 @@ const characterSchema = new mongoose.Schema(
       defense: { type: Number, default: 1 },
     },
 
+    // Cambios pendientes por turno (para visualización)
+    pendingChanges: {
+      hp: { type: Number, default: 0 }, // Positivo = curación, Negativo = daño
+      mana: { type: Number, default: 0 },
+      appliedAt: { type: Date }, // Cuándo se aplicó el último cambio
+    },
+
+    // Estado de KO (fuera de combate)
+    isKO: { type: Boolean, default: false },
+    koWarning: { type: Boolean, default: false }, // Aviso de KO para el siguiente turno
+
     // Habilidades
     abilities: [
       {
@@ -39,9 +50,10 @@ const characterSchema = new mongoose.Schema(
       },
     ],
 
-    // Estado actual
+    // Estado actual (buffs/debuffs con efectos por turno)
     status: [
       {
+        id: { type: String },
         type: {
           type: String,
           enum: ['buff', 'debuff', 'neutral'],
@@ -49,8 +61,19 @@ const characterSchema = new mongoose.Schema(
         },
         name: { type: String, required: true },
         description: { type: String },
-        duration: { type: Number },
+        duration: { type: Number }, // Turnos restantes
         icon: { type: String },
+        // Efectos por turno
+        effects: {
+          hpPerTurn: { type: Number, default: 0 }, // +/- HP por turno
+          manaPerTurn: { type: Number, default: 0 }, // +/- Mana por turno
+          statModifiers: {
+            strength: { type: Number, default: 0 },
+            intelligence: { type: Number, default: 0 },
+            dexterity: { type: Number, default: 0 },
+            defense: { type: Number, default: 0 },
+          },
+        },
       },
     ],
 
@@ -85,7 +108,7 @@ const characterSchema = new mongoose.Schema(
       default: '',
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export const Character = mongoose.model('Character', characterSchema);

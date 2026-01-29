@@ -9,6 +9,7 @@ const calculateInitiative = (characters) => {
       characterId: char._id,
       name: char.name,
       initiative: char.stats?.dexterity || 1,
+      isKO: char.isKO || false,
     }))
     .sort((a, b) => b.initiative - a.initiative) // Mayor dexterity primero
     .map((entry, index) => ({ ...entry, position: index }));
@@ -45,6 +46,107 @@ const findTiedGroups = (turnOrder) => {
   }
 
   return groups;
+};
+
+// Función para aplicar efectos de estados al inicio del turno
+const applyStatusEffects = async (character) => {
+  let hpChange = 0;
+  let manaChange = 0;
+  const expiredStatuses = [];
+  const appliedEffects = [];
+
+  for (const status of character.status) {
+    if (!status.effects) continue;
+
+    // Aplicar efectos de HP/Mana por turno
+    if (status.effects.hpPerTurn) {
+      hpChange += status.effects.hpPerTurn;
+      appliedEffects.push({
+        statusName: status.name,
+        type: status.type,
+        effect: 'hp',
+        value: status.effects.hpPerTurn,
+      });
+    }
+    if (status.effects.manaPerTurn) {
+      manaChange += status.effects.manaPerTurn;
+      appliedEffects.push({
+        statusName: status.name,
+        type: status.type,
+        effect: 'mana',
+        value: status.effects.manaPerTurn,
+      });
+    }
+
+    // Reducir duración
+    if (status.duration !== undefined && status.duration !== null) {
+      status.duration -= 1;
+      if (status.duration <= 0) {
+        expiredStatuses.push(status.id);
+      }
+    }
+  }
+
+  // Aplicar cambios de HP (respetando límites)
+  const oldHp = character.stats.hp;
+  const oldMana = character.stats.mana;
+
+  character.stats.hp = Math.min(
+    Math.max(0, character.stats.hp + hpChange),
+    character.stats.maxHp,
+  );
+  character.stats.mana = Math.min(
+    Math.max(0, character.stats.mana + manaChange),
+    character.stats.maxMana,
+  );
+
+  // Registrar cambios pendientes para visualización
+  character.pendingChanges = {
+    hp: character.stats.hp - oldHp,
+    mana: character.stats.mana - oldMana,
+    appliedAt: new Date(),
+  };
+
+  // Remover estados expirados
+  if (expiredStatuses.length > 0) {
+    character.status = character.status.filter(
+      (s) => !expiredStatuses.includes(s.id),
+    );
+  }
+
+  // Verificar si el personaje queda en KO
+  let koWarning = false;
+
+  if (character.stats.hp <= 0) {
+    character.stats.hp = 0;
+    if (!character.isKO) {
+      // Primera vez que llega a 0, dar aviso de KO
+      koWarning = true;
+      character.koWarning = true;
+    }
+  }
+
+  return {
+    hpChange,
+    manaChange,
+    appliedEffects,
+    expiredStatuses,
+    koWarning,
+    isKO: character.isKO,
+    newHp: character.stats.hp,
+    newMana: character.stats.mana,
+  };
+};
+
+// Función para verificar y aplicar KO al inicio del turno
+const checkAndApplyKO = async (character) => {
+  if (character.koWarning && character.stats.hp <= 0) {
+    character.isKO = true;
+    character.koWarning = false;
+    await character.save();
+    return true; // El personaje está ahora en KO
+  }
+  return false;
 };
 
 export const setupGameSockets = (io) => {
@@ -236,13 +338,65 @@ export const setupGameSockets = (io) => {
         // Avanzar al siguiente turno (circular)
         game.currentTurnIndex =
           (game.currentTurnIndex + 1) % game.turnOrder.length;
+
+        // Obtener el personaje del nuevo turno
+        const currentTurnEntry = game.turnOrder[game.currentTurnIndex];
+        const character = await Character.findById(
+          currentTurnEntry.characterId,
+        );
+
+        let turnStartData = {
+          currentTurnIndex: game.currentTurnIndex,
+          currentCharacter: currentTurnEntry,
+          updatedBy: 'dm',
+        };
+
+        if (character) {
+          // Verificar si el personaje estaba con aviso de KO
+          const justKOd = await checkAndApplyKO(character);
+
+          if (justKOd) {
+            // El personaje está ahora en KO, notificar
+            turnStartData.characterKO = {
+              characterId: character._id,
+              name: character.name,
+              isKO: true,
+            };
+
+            // Actualizar el estado KO en el turnOrder
+            game.turnOrder[game.currentTurnIndex].isKO = true;
+          } else if (character.isKO) {
+            // El personaje ya está en KO
+            turnStartData.characterKO = {
+              characterId: character._id,
+              name: character.name,
+              isKO: true,
+              wasAlreadyKO: true,
+            };
+          } else {
+            // Aplicar efectos de estados al inicio del turno
+            const effectsResult = await applyStatusEffects(character);
+            await character.save();
+
+            turnStartData.statusEffects = {
+              characterId: character._id,
+              ...effectsResult,
+            };
+
+            // Si el personaje tiene aviso de KO, notificar
+            if (effectsResult.koWarning) {
+              turnStartData.koWarning = {
+                characterId: character._id,
+                name: character.name,
+                message: '¡KO en el siguiente turno si no se cura!',
+              };
+            }
+          }
+        }
+
         await game.save();
 
-        io.to(`game:${gameId}`).emit('turn-advanced', {
-          currentTurnIndex: game.currentTurnIndex,
-          currentCharacter: game.turnOrder[game.currentTurnIndex],
-          updatedBy: 'dm',
-        });
+        io.to(`game:${gameId}`).emit('turn-advanced', turnStartData);
       } catch (error) {
         socket.emit('error', { message: error.message });
       }
@@ -538,8 +692,22 @@ export const setupGameSockets = (io) => {
           const character = await Character.findById(characterId);
           if (!character) continue;
 
+          const oldHp = character.stats.hp;
           const newHp = Math.max(0, character.stats.hp - damage);
           character.stats.hp = newHp;
+
+          // Registrar cambio pendiente para visualización
+          character.pendingChanges = {
+            hp: newHp - oldHp,
+            mana: 0,
+            appliedAt: new Date(),
+          };
+
+          // Verificar si queda en aviso de KO
+          if (newHp <= 0 && !character.isKO) {
+            character.koWarning = true;
+          }
+
           character.updatedAt = new Date();
           await character.save();
 
@@ -549,6 +717,8 @@ export const setupGameSockets = (io) => {
             maxHp: character.stats.maxHp,
             damage,
             damageType,
+            hpChange: newHp - oldHp,
+            koWarning: character.koWarning,
           });
         }
 
@@ -559,21 +729,184 @@ export const setupGameSockets = (io) => {
       },
     );
 
-    // DM: Añadir estado
+    // DM/Jugador: Modificar HP directamente (curar o dañar)
+    socket.on('modify-hp', async ({ characterId, amount, gameId, reason }) => {
+      try {
+        const character = await Character.findById(characterId);
+        if (!character) {
+          socket.emit('error', { message: 'Personaje no encontrado' });
+          return;
+        }
+
+        const oldHp = character.stats.hp;
+        const newHp = Math.min(
+          Math.max(0, character.stats.hp + amount),
+          character.stats.maxHp,
+        );
+        character.stats.hp = newHp;
+
+        // Registrar cambio para visualización
+        character.pendingChanges = {
+          hp: newHp - oldHp,
+          mana: character.pendingChanges?.mana || 0,
+          appliedAt: new Date(),
+        };
+
+        // Manejar KO warning
+        if (newHp <= 0 && !character.isKO) {
+          character.koWarning = true;
+        } else if (newHp > 0) {
+          // Si se cura, quitar warnings y KO
+          character.koWarning = false;
+          if (character.isKO) {
+            character.isKO = false;
+          }
+        }
+
+        character.updatedAt = new Date();
+        await character.save();
+
+        io.to(`game:${gameId}`).emit('hp-modified', {
+          characterId,
+          oldHp,
+          newHp,
+          maxHp: character.stats.maxHp,
+          change: newHp - oldHp,
+          reason: reason || (amount > 0 ? 'curación' : 'daño'),
+          koWarning: character.koWarning,
+          isKO: character.isKO,
+        });
+      } catch (error) {
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    // DM/Jugador: Modificar Mana directamente
+    socket.on(
+      'modify-mana',
+      async ({ characterId, amount, gameId, reason }) => {
+        try {
+          const character = await Character.findById(characterId);
+          if (!character) {
+            socket.emit('error', { message: 'Personaje no encontrado' });
+            return;
+          }
+
+          const oldMana = character.stats.mana;
+          const newMana = Math.min(
+            Math.max(0, character.stats.mana + amount),
+            character.stats.maxMana,
+          );
+          character.stats.mana = newMana;
+
+          // Registrar cambio para visualización
+          character.pendingChanges = {
+            hp: character.pendingChanges?.hp || 0,
+            mana: newMana - oldMana,
+            appliedAt: new Date(),
+          };
+
+          character.updatedAt = new Date();
+          await character.save();
+
+          io.to(`game:${gameId}`).emit('mana-modified', {
+            characterId,
+            oldMana,
+            newMana,
+            maxMana: character.stats.maxMana,
+            change: newMana - oldMana,
+            reason: reason || (amount > 0 ? 'recuperación' : 'gasto'),
+          });
+        } catch (error) {
+          socket.emit('error', { message: error.message });
+        }
+      },
+    );
+
+    // DM: Revivir personaje (quitar estado KO)
+    socket.on(
+      'dm:revive-character',
+      async ({ characterId, hpAmount, gameId }) => {
+        if (!(await isDM(socket, gameId))) {
+          socket.emit('error', { message: 'No autorizado' });
+          return;
+        }
+
+        try {
+          const character = await Character.findById(characterId);
+          if (!character) {
+            socket.emit('error', { message: 'Personaje no encontrado' });
+            return;
+          }
+
+          character.isKO = false;
+          character.koWarning = false;
+          character.stats.hp = Math.min(hpAmount || 1, character.stats.maxHp);
+          character.pendingChanges = {
+            hp: character.stats.hp,
+            mana: 0,
+            appliedAt: new Date(),
+          };
+          character.updatedAt = new Date();
+          await character.save();
+
+          // Actualizar estado KO en el turnOrder del juego
+          const game = await Game.findById(gameId);
+          if (game) {
+            const turnEntry = game.turnOrder.find(
+              (t) => t.characterId.toString() === characterId,
+            );
+            if (turnEntry) {
+              turnEntry.isKO = false;
+              await game.save();
+            }
+          }
+
+          io.to(`game:${gameId}`).emit('character-revived', {
+            characterId,
+            name: character.name,
+            hp: character.stats.hp,
+            maxHp: character.stats.maxHp,
+            updatedBy: 'dm',
+          });
+        } catch (error) {
+          socket.emit('error', { message: error.message });
+        }
+      },
+    );
+
+    // DM: Añadir estado (con efectos por turno)
     socket.on('dm:add-status', async ({ characterId, status, gameId }) => {
       const character = await Character.findById(characterId);
       if (!character) return;
 
-      character.status.push({
-        ...status,
+      // Estructura completa del estado con efectos
+      const newStatus = {
         id: `status_${Date.now()}`,
-      });
+        type: status.type || 'neutral',
+        name: status.name,
+        description: status.description || '',
+        duration: status.duration,
+        icon: status.icon || '',
+        effects: {
+          hpPerTurn: status.effects?.hpPerTurn || 0,
+          manaPerTurn: status.effects?.manaPerTurn || 0,
+          statModifiers: {
+            strength: status.effects?.statModifiers?.strength || 0,
+            intelligence: status.effects?.statModifiers?.intelligence || 0,
+            dexterity: status.effects?.statModifiers?.dexterity || 0,
+            defense: status.effects?.statModifiers?.defense || 0,
+          },
+        },
+      };
+
+      character.status.push(newStatus);
       character.updatedAt = new Date();
       await character.save();
 
       io.to(`game:${gameId}`).emit('status-added', {
         characterId,
-        status,
+        status: newStatus,
         updatedBy: 'dm',
       });
     });
