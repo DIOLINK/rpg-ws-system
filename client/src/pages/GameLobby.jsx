@@ -205,9 +205,9 @@ export const GameLobby = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {safeGames.map((game) => (
-                <button
+                <div
                   key={game._id}
-                  type="button"
+                  role="button"
                   className="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-colors cursor-pointer shadow-lg hover:shadow-xl group text-left w-full focus:outline-none focus:ring-2 focus:ring-purple-400"
                   onClick={() => navigate(`/game/${game._id}`)}
                   aria-label={`Ir a la partida ${game.name}`}
@@ -285,7 +285,7 @@ export const GameLobby = () => {
                   >
                     Salir de la partida
                   </button>
-                </button>
+                </div>
               ))}
             </div>
           )}

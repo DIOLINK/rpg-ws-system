@@ -136,6 +136,25 @@ export const useCharacterSocket = (initialCharacters = []) => {
       );
     });
 
+    // Evento de actualización de inventario
+    socket.current.on(
+      'inventory-updated',
+      ({ characterId, inventory, gold }) => {
+        console.log('📦 [CharacterSocket] inventory-updated:', characterId);
+        setCharacters((prev) =>
+          prev.map((char) =>
+            char._id === characterId
+              ? {
+                  ...char,
+                  inventory: inventory || char.inventory,
+                  gold: gold ?? char.gold,
+                }
+              : char,
+          ),
+        );
+      },
+    );
+
     // Daño aplicado
     socket.current.on('damage-applied', ({ updates }) => {
       setCharacters((prev) =>

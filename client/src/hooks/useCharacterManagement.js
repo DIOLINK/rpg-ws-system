@@ -146,6 +146,43 @@ export const useCharacterManagement = () => {
       );
     });
 
+    // Evento de actualización de inventario
+    socket.current.on(
+      'inventory-updated',
+      ({ characterId, inventory, gold, itemData, action }) => {
+        console.log('📦 inventory-updated:', { characterId, action, itemData });
+        setCharacters((prev) =>
+          prev.map((char) =>
+            char._id === characterId
+              ? {
+                  ...char,
+                  inventory: inventory || char.inventory,
+                  gold: gold ?? char.gold,
+                }
+              : char,
+          ),
+        );
+        // Mostrar notificación
+        if (action === 'added' && itemData?.name) {
+          addToast({
+            type: 'success',
+            message: `📦 Nuevo item: ${itemData.name}`,
+          });
+        } else if (action === 'removed' && itemData?.name) {
+          addToast({
+            type: 'info',
+            message: `🗑️ Item eliminado: ${itemData.name}`,
+          });
+        } else if (action === 'gold-changed') {
+          const amount = itemData?.amount || 0;
+          addToast({
+            type: amount > 0 ? 'success' : 'info',
+            message: `💰 ${amount > 0 ? '+' : ''}${amount} oro`,
+          });
+        }
+      },
+    );
+
     // Evento de daño aplicado
     socket.current.on('damage-applied', ({ updates }) => {
       console.log('📥 damage-applied:', updates);

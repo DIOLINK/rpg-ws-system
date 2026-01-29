@@ -4,6 +4,7 @@ import { CharacterSheet } from '../components/CharacterSheet';
 import { DMPanel } from '../components/DMPanel';
 import DMTurnOrderPanel from '../components/DMTurnOrderPanel';
 import { ErrorMessage } from '../components/ErrorMessage';
+import ItemManager from '../components/ItemManager';
 import { Loading } from '../components/Loading';
 import TurnOrderBar from '../components/TurnOrderBar';
 import { useAuth } from '../context/AuthContext';
@@ -302,6 +303,17 @@ export const GamePage = () => {
             </div>
           )}
 
+          {/* Panel DM - Gestión de Items */}
+          {isDM && (
+            <div className="lg:col-span-3">
+              <ItemManager
+                characters={characters}
+                gameId={gameId}
+                onItemAssigned={fetchGameData}
+              />
+            </div>
+          )}
+
           {/* Mi personaje - Destacado */}
           {myCharacter && (
             <div className={isDM ? 'lg:col-span-2' : 'col-span-1 w-full'}>
@@ -319,6 +331,7 @@ export const GamePage = () => {
                 statChanges={statChanges}
                 isKO={isCharacterKO(myCharacter._id)}
                 koWarning={myCharacter.koWarning}
+                gameId={gameId}
               />
             </div>
           )}
@@ -414,6 +427,7 @@ export const GamePage = () => {
                     statChanges={statChanges}
                     isKO={isCharacterKO(char._id)}
                     koWarning={char.koWarning}
+                    gameId={gameId}
                   />
                 </div>
               ))}

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { MAX_GAMES_DISPLAYED } from '../pages/GameLobby';
 import { classAbilityService } from '../services/classAbilityService';
+import { itemService } from '../services/itemService';
 import AccordionList from './AccordionList';
 import CharacterStats from './CharacterStats';
 // Iconos por tipo de clase
@@ -24,6 +25,7 @@ export const CharacterSheet = ({
   statChanges,
   isKO,
   koWarning,
+  gameId,
 }) => {
   const { isDM } = useAuth();
   const [editing, setEditing] = useState(false);
@@ -31,6 +33,8 @@ export const CharacterSheet = ({
   const [classAbilities, setClassAbilities] = useState([]);
   const [showHpChange, setShowHpChange] = useState(false);
   const [showManaChange, setShowManaChange] = useState(false);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [removingItems, setRemovingItems] = useState(false);
   const [formData, setFormData] = useState({
     name: character.name,
     classType: character.classType || '',
@@ -167,6 +171,41 @@ export const CharacterSheet = ({
       },
     });
     setEditing(false);
+  };
+
+  // Funciones para gestión de items del inventario
+  const toggleItemSelection = (itemId) => {
+    setSelectedItems((prev) =>
+      prev.includes(itemId)
+        ? prev.filter((id) => id !== itemId)
+        : [...prev, itemId],
+    );
+  };
+
+  const selectAllItems = () => {
+    if (selectedItems.length === character.inventory?.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(character.inventory?.map((item) => item.id) || []);
+    }
+  };
+
+  const handleRemoveItems = async () => {
+    if (selectedItems.length === 0 || !gameId) return;
+
+    setRemovingItems(true);
+    try {
+      for (const inventoryId of selectedItems) {
+        await itemService.removeFromCharacter(character._id, inventoryId, {
+          gameId,
+        });
+      }
+      setSelectedItems([]);
+    } catch (error) {
+      console.error('Error al eliminar items:', error);
+    } finally {
+      setRemovingItems(false);
+    }
   };
 
   const hpPercentage = (character.stats.hp / character.stats.maxHp) * 100;
@@ -697,19 +736,62 @@ export const CharacterSheet = ({
               <h3 className="text-base font-semibold text-purple-400 flex items-center gap-2">
                 🎒 Inventario
               </h3>
-              <span className="text-xs text-gray-400">
-                {character.inventory?.length || 0} objetos
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">
+                  {character.inventory?.length || 0} objetos
+                </span>
+                {isDM && character.inventory?.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={selectAllItems}
+                      className="text-xs text-purple-400 hover:text-purple-300"
+                      title={
+                        selectedItems.length === character.inventory?.length
+                          ? 'Deseleccionar todo'
+                          : 'Seleccionar todo'
+                      }
+                    >
+                      {selectedItems.length === character.inventory?.length
+                        ? '☑️'
+                        : '☐'}
+                    </button>
+                    {selectedItems.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveItems}
+                        disabled={removingItems}
+                        className="text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded disabled:opacity-50"
+                        title={`Eliminar ${selectedItems.length} item(s)`}
+                      >
+                        {removingItems ? '...' : `🗑️ ${selectedItems.length}`}
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
             {character.inventory && character.inventory.length > 0 ? (
               <div className="space-y-2">
                 {character.inventory.map((item) => (
                   <div
                     key={item.id}
-                    className="bg-gray-700/50 rounded-lg p-3 flex items-center justify-between"
+                    className={`bg-gray-700/50 rounded-lg p-3 flex items-center justify-between transition-all ${
+                      selectedItems.includes(item.id)
+                        ? 'ring-2 ring-purple-500 bg-purple-900/30'
+                        : ''
+                    }`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-xl">📦</span>
+                      {isDM && (
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.includes(item.id)}
+                          onChange={() => toggleItemSelection(item.id)}
+                          className="w-4 h-4 rounded border-gray-500 text-purple-600 focus:ring-purple-500 bg-gray-700"
+                        />
+                      )}
+                      <span className="text-xl">{item.icon || '📦'}</span>
                       <div>
                         <p className="text-sm font-medium text-white">
                           {item.name}
@@ -819,4 +901,5 @@ CharacterSheet.propTypes = {
   }),
   isKO: PropTypes.bool,
   koWarning: PropTypes.bool,
+  gameId: PropTypes.string,
 };
