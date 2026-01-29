@@ -4,8 +4,10 @@ import { CharacterSheet } from '../components/CharacterSheet';
 import { DMPanel } from '../components/DMPanel';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { Loading } from '../components/Loading';
+import TurnOrderBar from '../components/TurnOrderBar';
 import { useAuth } from '../context/AuthContext';
 import { useGameSocket } from '../hooks/useGameSocket';
+import { useTurnOrderSocket } from '../hooks/useTurnOrderSocket';
 import { CopyButton, MAX_GAMES_DISPLAYED } from './GameLobby';
 
 const BASE_URL = import.meta.env.VITE_API_URL;
@@ -14,6 +16,7 @@ export const GamePage = () => {
   const navigate = useNavigate();
   const { gameId } = useParams();
   const { user, isDM } = useAuth();
+  console.log('🚀 ~ GamePage ~ user:', user);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -39,7 +42,7 @@ export const GamePage = () => {
 
   const { _socket, connected, characters, setCharacters, emit } = useGameSocket(
     gameId,
-    fetchGameData
+    fetchGameData,
   );
 
   useEffect(() => {
@@ -48,11 +51,20 @@ export const GamePage = () => {
 
   // Ahora cada character tiene un campo player con info del usuario dueño
   const myCharacter = characters.find(
-    (c) => c.player && c.player._id === user._id
+    (c) => c.player && c.player._id === user._id,
   );
   const otherCharacters = characters.filter(
-    (c) => !c.player || c.player._id !== user._id
+    (c) => !c.player || c.player._id !== user._id,
   );
+
+  // Orden de turnos (puedes ajustar la lógica de inicialización si lo deseas)
+  const initialTurnOrder = characters.map((c) => ({
+    id: c._id,
+    name: c.name,
+    player: c.player,
+  }));
+  const { turnOrder, setTurnOrder, nextTurn, forceTurn, currentTurn } =
+    useTurnOrderSocket(gameId, initialTurnOrder);
 
   // Redirigir a asignación de personaje si el usuario no tiene personaje en la partida y no es DM
   useEffect(() => {
@@ -101,6 +113,14 @@ export const GamePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Barra de turnos */}
+      <TurnOrderBar
+        turnOrder={turnOrder}
+        currentTurn={currentTurn}
+        userId={user._id}
+        onClickCharacter={isDM ? (char) => forceTurn(char.id) : undefined}
+      />
 
       <div className="max-w-7xl mx-auto">
         {/* Layout principal */}
@@ -226,7 +246,9 @@ export const GamePage = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs sm:text-sm text-gray-400">
             <p>
               Conectado como:{' '}
-              <span className="font-medium text-white">{user.name}</span>
+              <span className="font-medium text-white">
+                {user.displayName ?? 'Desconocido'}
+              </span>
             </p>
             <p>
               Rol:{' '}
