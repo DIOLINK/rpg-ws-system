@@ -634,6 +634,45 @@ export const setupGameSockets = (io) => {
       });
     });
 
+    // DM: Validar/Rechazar personaje
+    socket.on(
+      'dm:validate-character',
+      async ({ characterId, validated, comment, gameId }) => {
+        if (!(await isDM(socket, gameId))) {
+          socket.emit('error', { message: 'No autorizado' });
+          return;
+        }
+
+        try {
+          const character = await Character.findById(characterId);
+          if (!character) {
+            socket.emit('error', { message: 'Personaje no encontrado' });
+            return;
+          }
+
+          character.validated = validated;
+          character.validationComment = comment || '';
+          character.updatedAt = new Date();
+          await character.save();
+
+          // Emitir a todos en la partida
+          io.to(`game:${gameId}`).emit('character-validated', {
+            characterId,
+            validated,
+            comment: comment || '',
+            characterName: character.name,
+            updatedBy: 'dm',
+          });
+
+          console.log(
+            `✅ Personaje ${character.name} ${validated ? 'aprobado' : 'rechazado'} por el DM`,
+          );
+        } catch (error) {
+          socket.emit('error', { message: error.message });
+        }
+      },
+    );
+
     // DM: Añadir habilidad
     socket.on('dm:add-ability', async ({ characterId, ability, gameId }) => {
       if (!(await isDM(socket, gameId))) {
