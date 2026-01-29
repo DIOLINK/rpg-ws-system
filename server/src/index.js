@@ -7,6 +7,7 @@ import authRoutes from './routes/auth.js';
 import characterRoutes from './routes/character.js';
 import classAbilityRoutes from './routes/classAbility.js';
 import gameRoutes from './routes/game.js';
+import { createItemRoutes } from './routes/item.js';
 import { setupGameSockets } from './socket/gameSocket.js';
 
 // Configurar dotenv para cargar el archivo .env desde la ubicación correcta
@@ -44,6 +45,9 @@ app.use('/api/class-abilities', classAbilityRoutes);
 
 // WebSockets
 setupGameSockets(io);
+
+// Rutas que necesitan acceso a io
+app.use('/api/items', createItemRoutes(io));
 
 // Ruta de health check
 app.get('/health', (req, res) => {

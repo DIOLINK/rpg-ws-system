@@ -80,15 +80,77 @@ const characterSchema = new mongoose.Schema(
     // Control de edición
     canEdit: { type: Boolean, default: false },
 
-    // Inventario
+    // Inventario expandido
     inventory: [
       {
         id: { type: String, required: true },
+        // Referencia opcional al item base (si es un item del catálogo)
+        itemRef: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Item',
+        },
         name: { type: String, required: true },
-        quantity: { type: Number, default: 1 },
         description: { type: String },
+        quantity: { type: Number, default: 1 },
+        // Tipo de item
+        type: {
+          type: String,
+          enum: [
+            'weapon',
+            'armor',
+            'accessory',
+            'consumable',
+            'material',
+            'quest',
+            'misc',
+          ],
+          default: 'misc',
+        },
+        // Rareza
+        rarity: {
+          type: String,
+          enum: ['common', 'uncommon', 'rare', 'epic', 'legendary', 'unique'],
+          default: 'common',
+        },
+        // Icono
+        icon: { type: String, default: '📦' },
+        // Stats que modifica
+        statModifiers: {
+          strength: { type: Number, default: 0 },
+          intelligence: { type: Number, default: 0 },
+          dexterity: { type: Number, default: 0 },
+          defense: { type: Number, default: 0 },
+          maxHp: { type: Number, default: 0 },
+          maxMana: { type: Number, default: 0 },
+        },
+        // Para armas
+        damage: { type: String },
+        // Equipable y slot
+        equippable: { type: Boolean, default: false },
+        equipSlot: { type: String },
+        // Si está equipado actualmente
+        equipped: { type: Boolean, default: false },
+        // Valor en oro
+        value: { type: Number, default: 0 },
       },
     ],
+
+    // Equipment slots (referencias a items equipados del inventario)
+    equipment: {
+      mainHand: { type: String }, // id del item en inventario
+      offHand: { type: String },
+      head: { type: String },
+      chest: { type: String },
+      legs: { type: String },
+      feet: { type: String },
+      hands: { type: String },
+      neck: { type: String },
+      ring1: { type: String },
+      ring2: { type: String },
+    },
+
+    // Oro/monedas
+    gold: { type: Number, default: 0 },
 
     classType: {
       type: String,
