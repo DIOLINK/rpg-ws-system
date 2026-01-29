@@ -30,7 +30,8 @@ export default function TurnOrderBar({
         isCurrent: idx === currentTurnIndex,
         // Nota: necesitarías pasar la info del player si quieres mostrar "Tú"
         isYou: false, // Se puede mejorar pasando los characters con player info
-        isPlayer: true,
+        isPlayer: !entry.isNPC,
+        isNPC: entry.isNPC || false,
       })),
     [turnOrder, currentTurnIndex],
   );

@@ -6,6 +6,7 @@ import DMTurnOrderPanel from '../components/DMTurnOrderPanel';
 import { ErrorMessage } from '../components/ErrorMessage';
 import ItemManager from '../components/ItemManager';
 import { Loading } from '../components/Loading';
+import NPCManager from '../components/NPCManager';
 import SellRequestsPanel from '../components/SellRequestsPanel';
 import ShopOffersPanel from '../components/ShopOffersPanel';
 import TurnOrderBar from '../components/TurnOrderBar';
@@ -324,6 +325,25 @@ export const GamePage = () => {
                 gameId={gameId}
                 onItemAssigned={fetchGameData}
               />
+            </div>
+          )}
+
+          {/* Panel DM - Gestión de NPCs */}
+          {isDM && (
+            <div className="lg:col-span-3">
+              <div className="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl sm:text-2xl font-bold text-purple-400">
+                    👹 Gestión de NPCs
+                  </h2>
+                </div>
+                <NPCManager
+                  gameId={gameId}
+                  characters={characters}
+                  onRefresh={fetchGameData}
+                  socket={getSocket()}
+                />
+              </div>
             </div>
           )}
 
