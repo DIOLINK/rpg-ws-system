@@ -119,7 +119,18 @@ export const useGameSocket = (gameId, onJoinedGame) => {
   }, [gameId]);
 
   const emit = (event, data) => {
-    socket.current?.emit(event, { ...data, gameId });
+    console.log(
+      '📡 Socket emit:',
+      event,
+      data,
+      'Socket connected:',
+      socket.current?.connected,
+    );
+    if (!socket.current) {
+      console.error('❌ Socket no existe');
+      return;
+    }
+    socket.current.emit(event, { ...data, gameId });
   };
 
   return {

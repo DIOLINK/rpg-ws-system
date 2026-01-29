@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
+import { authService } from '../utils/authService';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
+const SOCKET_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:5001';
 
 export const useGameLobby = (user) => {
   const navigate = useNavigate();
@@ -9,23 +12,60 @@ export const useGameLobby = (user) => {
   const [newGameName, setNewGameName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(true);
+  const socket = useRef(null);
+
+  // Conectar socket para actualizaciones en tiempo real
+  useEffect(() => {
+    const token = authService.getToken();
+    if (!token || !user) return;
+
+    socket.current = io(SOCKET_URL, {
+      auth: { token },
+    });
+
+    socket.current.on('connect', () => {
+      console.log('🔌 Socket de lobby conectado');
+      socket.current.emit('join-user-channel');
+    });
+
+    // Evento cuando un jugador se une a una partida del DM
+    socket.current.on('player-joined', ({ userId, gameId }) => {
+      console.log('📥 player-joined:', { userId, gameId });
+      // Refrescar lista de partidas
+      fetchGames();
+    });
+
+    // Evento cuando se actualiza una partida
+    socket.current.on('game-updated', (updatedGame) => {
+      console.log('📥 game-updated:', updatedGame);
+      setGames((prev) =>
+        prev.map((g) =>
+          g._id === updatedGame._id ? { ...g, ...updatedGame } : g,
+        ),
+      );
+    });
+
+    return () => {
+      socket.current?.disconnect();
+    };
+  }, [user]);
+
+  const fetchGames = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/game/my-games`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      setGames(data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching games:', error);
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchGames = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE_URL}/game/my-games`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await response.json();
-        setGames(data);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching games:', error);
-        setLoading(false);
-      }
-    };
-
     fetchGames();
   }, []);
 

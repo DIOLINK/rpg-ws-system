@@ -17,11 +17,11 @@ const CharacterList = ({
       {characters.map((char) => (
         <li
           key={char._id}
-          className={`p-4 border rounded flex flex-col md:flex-row md:justify-between md:items-center ${
+          className={`p-4 border rounded flex items-center justify-between ${
             currentEditingId === char._id ? 'bg-blue-50' : ''
           }`}
         >
-          <div>
+          <div className="flex-1 min-w-0">
             <span className="font-bold text-lg">{char.name}</span>
             <CharacterStatusBadge
               validated={char.validated}
@@ -29,7 +29,7 @@ const CharacterList = ({
             />
             <p className="text-sm text-gray-600 mt-1">{char.description}</p>
           </div>
-          <div className="flex space-x-2 mt-2 md:mt-0">
+          <div className="flex-shrink-0 ml-4">
             <CharacterActionsMenu
               onEdit={() => onEdit(char._id)}
               onSend={() => onSend(char._id)}

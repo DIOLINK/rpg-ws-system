@@ -176,7 +176,8 @@ export const GamePage = () => {
   };
 
   const handleDMCommand = (command, data) => {
-    emit(`dm:${command}`, data);
+    console.log('🎮 DM Command:', command, { ...data, gameId });
+    emit(`dm:${command}`, { ...data, gameId });
   };
 
   if (loading) return <Loading />;
