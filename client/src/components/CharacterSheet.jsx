@@ -292,6 +292,37 @@ export const CharacterSheet = ({
   const equippedCount =
     character.inventory?.filter((item) => item.equipped).length || 0;
 
+  // Calcular bonuses de stats por items equipados
+  const equipmentBonuses = useMemo(() => {
+    const bonuses = {
+      strength: 0,
+      intelligence: 0,
+      dexterity: 0,
+      defense: 0,
+      maxHp: 0,
+      maxMana: 0,
+    };
+
+    const equippedItems =
+      character.inventory?.filter((item) => item.equipped) || [];
+
+    equippedItems.forEach((item) => {
+      if (item.statModifiers) {
+        Object.keys(bonuses).forEach((stat) => {
+          if (item.statModifiers[stat]) {
+            bonuses[stat] += item.statModifiers[stat];
+          }
+        });
+      }
+      // También sumar armorValue a defense si existe
+      if (item.armorValue) {
+        bonuses.defense += item.armorValue;
+      }
+    });
+
+    return bonuses;
+  }, [character.inventory]);
+
   const hpPercentage = (character.stats.hp / character.stats.maxHp) * 100;
   const manaPercentage = (character.stats.mana / character.stats.maxMana) * 100;
 
@@ -594,6 +625,7 @@ export const CharacterSheet = ({
           {/* Stats principales */}
           <CharacterStats
             stats={formData}
+            equipmentBonuses={equipmentBonuses}
             editing={editing && isDM}
             onChange={({ name, value }) =>
               setFormData((prev) => ({ ...prev, [name]: value }))
