@@ -12,7 +12,7 @@ import {
 const ItemManager = ({ characters, gameId, onItemAssigned }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('catalog'); // 'catalog', 'create', 'assign', 'shop'
+  const [activeTab, setActiveTab] = useState('catalog'); // 'catalog', 'create', 'assign', 'shop', 'gold'
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectedCharacters, setSelectedCharacters] = useState([]);
   const [quantity, setQuantity] = useState(1);
@@ -25,6 +25,10 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
   // Estado para la tienda (DM vendiendo a jugadores) - Soporta múltiples items
   const [shopSelectedItems, setShopSelectedItems] = useState([]); // [{item, quantity, price}]
   const [shopSelectedCharacter, setShopSelectedCharacter] = useState('');
+
+  // Estado para gestión de oro
+  const [goldCharacter, setGoldCharacter] = useState('');
+  const [goldAmount, setGoldAmount] = useState(0);
 
   // Estado para crear/editar item
   const [formData, setFormData] = useState({
@@ -292,6 +296,7 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
         { id: 'create', label: '➕ Crear Item', icon: '➕' },
         { id: 'assign', label: '🎁 Asignar', icon: '🎁' },
         { id: 'shop', label: '🏪 Vender', icon: '🏪' },
+        { id: 'gold', label: '💰 Oro', icon: '💰' },
       ].map((tab) => (
         <button
           key={tab.id}
@@ -1057,6 +1062,100 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
     </div>
   );
 
+  // Función para modificar oro
+  const handleModifyGold = async (isAdd) => {
+    if (!goldCharacter || goldAmount <= 0) {
+      setError('Selecciona un personaje y una cantidad válida');
+      return;
+    }
+
+    try {
+      setError('');
+      const amount = isAdd ? goldAmount : -goldAmount;
+      await itemService.modifyGold(goldCharacter, amount, gameId);
+      const char = characters.find((c) => c._id === goldCharacter);
+      setSuccess(
+        `${isAdd ? 'Añadido' : 'Quitado'} ${goldAmount} oro a ${char?.name || 'personaje'}`,
+      );
+      setGoldAmount(0);
+      setTimeout(() => setSuccess(''), 3000);
+      if (onItemAssigned) onItemAssigned();
+    } catch (err) {
+      setError(err.message || 'Error al modificar oro');
+    }
+  };
+
+  const renderGold = () => (
+    <div className="space-y-4">
+      <div className="bg-gray-700/50 rounded-lg p-4">
+        <h3 className="text-white font-medium mb-3 flex items-center gap-2">
+          💰 Gestión de Oro
+        </h3>
+        <p className="text-gray-400 text-sm mb-4">
+          Añade o quita oro a los personajes de la partida.
+        </p>
+
+        {/* Lista de personajes con su oro actual */}
+        <div className="mb-4">
+          <label className="block text-sm text-gray-400 mb-2">
+            Oro actual de los personajes
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[200px] overflow-y-auto bg-gray-600/50 rounded-lg p-3">
+            {characters.map((char) => (
+              <div
+                key={char._id}
+                className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
+                  goldCharacter === char._id
+                    ? 'bg-yellow-600/30 border border-yellow-500'
+                    : 'bg-gray-700 hover:bg-gray-600'
+                }`}
+                onClick={() => setGoldCharacter(char._id)}
+              >
+                <span className="text-white text-sm">{char.name}</span>
+                <span className="text-yellow-400 font-bold">
+                  💰 {char.gold || 0}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Cantidad a modificar */}
+        <div className="mb-4">
+          <label className="block text-sm text-gray-400 mb-2">
+            Cantidad de oro
+          </label>
+          <input
+            type="number"
+            value={goldAmount}
+            onChange={(e) => setGoldAmount(Math.max(0, Number(e.target.value)))}
+            className="w-full px-3 py-2 bg-gray-600 rounded-lg text-white"
+            min="0"
+            placeholder="Cantidad..."
+          />
+        </div>
+
+        {/* Botones de acción */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleModifyGold(true)}
+            disabled={!goldCharacter || goldAmount <= 0}
+            className="flex-1 py-3 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
+          >
+            ➕ Añadir Oro
+          </button>
+          <button
+            onClick={() => handleModifyGold(false)}
+            disabled={!goldCharacter || goldAmount <= 0}
+            className="flex-1 py-3 bg-red-600 hover:bg-red-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
+          >
+            ➖ Quitar Oro
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="bg-gray-800 rounded-lg p-4 sm:p-6">
       <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
@@ -1085,6 +1184,7 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
           {activeTab === 'create' && renderCreateForm()}
           {activeTab === 'assign' && renderAssign()}
           {activeTab === 'shop' && renderShop()}
+          {activeTab === 'gold' && renderGold()}
         </>
       )}
     </div>
