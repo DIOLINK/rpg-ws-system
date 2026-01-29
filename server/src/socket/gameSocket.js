@@ -824,25 +824,43 @@ export const setupGameSockets = (io) => {
       const character = await Character.findById(characterId);
       if (!character) return;
 
-      character.abilities.push({
+      console.log(
+        `📋 Habilidades ANTES de añadir:`,
+        character.abilities.map((a) => a.name),
+      );
+
+      const newAbility = {
         ...ability,
         id: `ability_${Date.now()}`,
-      });
+      };
+
+      character.abilities.push(newAbility);
       character.updatedAt = new Date();
       await character.save();
 
+      // Recargar para verificar que se guardó
+      const savedChar = await Character.findById(characterId);
+      console.log(
+        `📋 Habilidades DESPUÉS de guardar:`,
+        savedChar.abilities.map((a) => a.name),
+      );
+
       io.to(`game:${gameId}`).emit('ability-added', {
         characterId,
-        ability,
+        ability: newAbility,
         updatedBy: 'dm',
       });
 
       // También emitir al canal personal del propietario
       io.to(`user:${character.playerId}`).emit('ability-added', {
         characterId,
-        ability,
+        ability: newAbility,
         updatedBy: 'dm',
       });
+
+      console.log(
+        `✅ Habilidad "${newAbility.name}" añadida a ${character.name}`,
+      );
     });
 
     // DM: Eliminar habilidad
@@ -1205,6 +1223,75 @@ export const setupGameSockets = (io) => {
           updates: sanitizedUpdates,
           updatedBy: 'player',
         });
+      },
+    );
+
+    // Jugador: Añadir habilidad a su personaje (solo si puede editar)
+    socket.on(
+      'player:add-ability',
+      async ({ characterId, ability, gameId }) => {
+        const character = await Character.findById(characterId);
+        if (!character || !character.canEdit) {
+          socket.emit('error', { message: 'No puedes editar este personaje' });
+          return;
+        }
+
+        const newAbility = {
+          ...ability,
+          id: ability.id || `ability_${Date.now()}`,
+        };
+
+        character.abilities.push(newAbility);
+        character.updatedAt = new Date();
+        await character.save();
+
+        io.to(`game:${gameId}`).emit('ability-added', {
+          characterId,
+          ability: newAbility,
+          updatedBy: 'player',
+        });
+
+        io.to(`user:${character.playerId}`).emit('ability-added', {
+          characterId,
+          ability: newAbility,
+          updatedBy: 'player',
+        });
+
+        console.log(
+          `✅ Jugador añadió habilidad "${newAbility.name}" a ${character.name}`,
+        );
+      },
+    );
+
+    // Jugador: Eliminar habilidad de su personaje (solo si puede editar)
+    socket.on(
+      'player:remove-ability',
+      async ({ characterId, abilityId, gameId }) => {
+        const character = await Character.findById(characterId);
+        if (!character || !character.canEdit) {
+          socket.emit('error', { message: 'No puedes editar este personaje' });
+          return;
+        }
+
+        character.abilities = character.abilities.filter(
+          (a) => a.id !== abilityId,
+        );
+        character.updatedAt = new Date();
+        await character.save();
+
+        io.to(`game:${gameId}`).emit('ability-removed', {
+          characterId,
+          abilityId,
+          updatedBy: 'player',
+        });
+
+        io.to(`user:${character.playerId}`).emit('ability-removed', {
+          characterId,
+          abilityId,
+          updatedBy: 'player',
+        });
+
+        console.log(`✅ Jugador eliminó habilidad de ${character.name}`);
       },
     );
 
