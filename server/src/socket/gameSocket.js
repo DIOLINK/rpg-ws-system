@@ -1,4 +1,4 @@
-import { verifyToken } from '../../config/firebaseAdmin.js';
+import { verifyToken } from '../middleware/auth.js';
 import { Character } from '../models/Character.js';
 import { Game } from '../models/Game.js';
 
