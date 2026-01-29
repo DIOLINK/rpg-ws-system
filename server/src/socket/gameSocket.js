@@ -1,6 +1,7 @@
 import { verifyToken } from '../middleware/auth.js';
 import { Character } from '../models/Character.js';
 import { Game } from '../models/Game.js';
+import { User } from '../models/User.js';
 
 // Función para calcular iniciativa basada en dexterity
 const calculateInitiative = (characters) => {
@@ -152,11 +153,36 @@ const checkAndApplyKO = async (character) => {
 export const setupGameSockets = (io) => {
   io.on('connection', (socket) => {
     console.log('🎮 Usuario conectado:', socket.id);
+
+    // Helper para obtener el usuario actual del socket
+    const getCurrentUser = async () => {
+      try {
+        const token = socket.handshake.auth.token;
+        const firebaseUser = await verifyToken(token);
+        return await User.findOne({ googleId: firebaseUser.sub });
+      } catch {
+        return null;
+      }
+    };
+
+    // Unirse al canal personal del usuario (para recibir actualizaciones de personajes)
+    socket.on('join-user-channel', async () => {
+      const user = await getCurrentUser();
+      if (user) {
+        socket.join(`user:${user._id}`);
+        console.log(`👤 Usuario ${user.name} unido a su canal personal`);
+      }
+    });
+
     const isDM = async (socket, gameId) => {
       const token = socket.handshake.auth.token;
-      const user = await verifyToken(token);
+      const firebaseUser = await verifyToken(token);
+      const user = await User.findOne({ googleId: firebaseUser.sub });
       const game = await Game.findById(gameId);
-      return game.dmId.toString() === user.sub;
+
+      if (!user || !game) return false;
+
+      return game.dmId.toString() === user._id.toString();
     };
 
     // --- ORDEN DE TURNOS ---
@@ -638,7 +664,17 @@ export const setupGameSockets = (io) => {
     socket.on(
       'dm:validate-character',
       async ({ characterId, validated, comment, gameId }) => {
-        if (!(await isDM(socket, gameId))) {
+        console.log('📥 dm:validate-character recibido:', {
+          characterId,
+          validated,
+          gameId,
+        });
+
+        const isAuthorized = await isDM(socket, gameId);
+        console.log('🔐 isDM check:', isAuthorized);
+
+        if (!isAuthorized) {
+          console.log('❌ No autorizado como DM');
           socket.emit('error', { message: 'No autorizado' });
           return;
         }
@@ -646,6 +682,7 @@ export const setupGameSockets = (io) => {
         try {
           const character = await Character.findById(characterId);
           if (!character) {
+            console.log('❌ Personaje no encontrado:', characterId);
             socket.emit('error', { message: 'Personaje no encontrado' });
             return;
           }
@@ -664,10 +701,20 @@ export const setupGameSockets = (io) => {
             updatedBy: 'dm',
           });
 
+          // También emitir al canal personal del propietario del personaje
+          io.to(`user:${character.playerId}`).emit('character-validated', {
+            characterId,
+            validated,
+            comment: comment || '',
+            characterName: character.name,
+            updatedBy: 'dm',
+          });
+
           console.log(
             `✅ Personaje ${character.name} ${validated ? 'aprobado' : 'rechazado'} por el DM`,
           );
         } catch (error) {
+          console.log('❌ Error:', error.message);
           socket.emit('error', { message: error.message });
         }
       },
