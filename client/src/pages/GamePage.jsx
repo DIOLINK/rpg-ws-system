@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CharacterSheet } from '../components/CharacterSheet';
 import { DMPanel } from '../components/DMPanel';
+import DMTurnOrderPanel from '../components/DMTurnOrderPanel';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { Loading } from '../components/Loading';
 import TurnOrderBar from '../components/TurnOrderBar';
@@ -11,6 +12,84 @@ import { useTurnOrderSocket } from '../hooks/useTurnOrderSocket';
 import { CopyButton, MAX_GAMES_DISPLAYED } from './GameLobby';
 
 const BASE_URL = import.meta.env.VITE_API_URL;
+
+// Componente de alertas de KO y efectos de estado
+const TurnAlert = ({ koAlert, statusEffectsApplied, onDismiss }) => {
+  if (!koAlert && !statusEffectsApplied) return null;
+
+  return (
+    <div className="fixed top-20 right-4 z-50 space-y-2 max-w-sm">
+      {/* Alerta de KO */}
+      {koAlert && (
+        <div
+          className={`p-4 rounded-lg shadow-xl animate-bounce ${
+            koAlert.type === 'ko'
+              ? 'bg-red-900/95 border-2 border-red-500'
+              : koAlert.type === 'warning'
+                ? 'bg-yellow-900/95 border-2 border-yellow-500'
+                : koAlert.type === 'revived'
+                  ? 'bg-green-900/95 border-2 border-green-500'
+                  : 'bg-gray-800/95 border-2 border-gray-500'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">
+              {koAlert.type === 'ko'
+                ? '💀'
+                : koAlert.type === 'warning'
+                  ? '⚠️'
+                  : koAlert.type === 'revived'
+                    ? '✨'
+                    : '❓'}
+            </span>
+            <div>
+              <p className="font-bold text-white">
+                {koAlert.type === 'ko'
+                  ? `¡${koAlert.name} está KO!`
+                  : koAlert.type === 'warning'
+                    ? '¡Aviso de KO!'
+                    : koAlert.type === 'revived'
+                      ? '¡Personaje revivido!'
+                      : 'Notificación'}
+              </p>
+              <p className="text-sm text-gray-300">{koAlert.message}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alerta de efectos de estado aplicados */}
+      {statusEffectsApplied &&
+        statusEffectsApplied.appliedEffects?.length > 0 && (
+          <div className="p-4 rounded-lg shadow-xl bg-purple-900/95 border-2 border-purple-500">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">✨</span>
+              <div>
+                <p className="font-bold text-white">
+                  Efectos de turno aplicados
+                </p>
+                <div className="text-sm space-y-1 mt-1">
+                  {statusEffectsApplied.appliedEffects.map((effect, idx) => (
+                    <p
+                      key={idx}
+                      className={
+                        effect.type === 'buff'
+                          ? 'text-green-400'
+                          : 'text-red-400'
+                      }
+                    >
+                      {effect.statusName}: {effect.value > 0 ? '+' : ''}
+                      {effect.value} {effect.effect.toUpperCase()}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+    </div>
+  );
+};
 
 export const GamePage = () => {
   const navigate = useNavigate();
@@ -63,12 +142,23 @@ export const GamePage = () => {
     tiedGroups,
     combatStarted,
     loading: turnLoading,
+    // Notificaciones
+    statChanges,
+    koAlert,
+    statusEffectsApplied,
+    // Acciones DM
     calculateTurnOrder,
     resolveTie,
     nextTurn,
     forceTurn,
     addToTurnOrder,
     removeFromTurnOrder,
+    reviveCharacter,
+    // Acciones HP/MP
+    modifyHp,
+    modifyMana,
+    // Utilidades
+    isCharacterKO,
   } = useTurnOrderSocket(gameId);
 
   // Redirigir a asignación de personaje si el usuario no tiene personaje en la partida y no es DM
@@ -94,6 +184,12 @@ export const GamePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-900 p-2 sm:p-3 md:p-4 lg:p-6">
+      {/* Alertas de KO y efectos */}
+      <TurnAlert
+        koAlert={koAlert}
+        statusEffectsApplied={statusEffectsApplied}
+      />
+
       {/* Status Bar - Sticky en mobile */}
       <div className="sticky top-0 z-10 bg-gray-800/95 backdrop-blur-sm rounded-lg p-2 sm:p-3 mb-3 sm:mb-4 shadow-lg">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -151,6 +247,7 @@ export const GamePage = () => {
                 onAddToTurnOrder={addToTurnOrder}
                 onRemoveFromTurnOrder={removeFromTurnOrder}
                 onResolveTie={resolveTie}
+                onReviveCharacter={reviveCharacter}
               />
             </div>
           )}
@@ -176,6 +273,9 @@ export const GamePage = () => {
               <CharacterSheet
                 character={myCharacter}
                 onUpdate={handleCharacterUpdate}
+                statChanges={statChanges}
+                isKO={isCharacterKO(myCharacter._id)}
+                koWarning={myCharacter.koWarning}
               />
             </div>
           )}
@@ -260,6 +360,9 @@ export const GamePage = () => {
                   <CharacterSheet
                     character={char}
                     onUpdate={() => {}} // Solo lectura
+                    statChanges={statChanges}
+                    isKO={isCharacterKO(char._id)}
+                    koWarning={char.koWarning}
                   />
                 </div>
               ))}

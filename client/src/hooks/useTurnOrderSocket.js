@@ -3,7 +3,8 @@ import { useGameSocket } from '../hooks/useGameSocket';
 
 /**
  * Hook para sincronizar el orden de turnos en tiempo real usando sockets.
- * Maneja el cálculo de iniciativa basado en dexterity y resolución de empates.
+ * Maneja el cálculo de iniciativa basado en dexterity, resolución de empates,
+ * modificaciones de HP/MP y estado de KO.
  * @param {string} gameId - ID de la partida
  * @returns {object} Estado y acciones para el sistema de turnos
  */
@@ -14,6 +15,11 @@ export function useTurnOrderSocket(gameId) {
   const [tiedGroups, setTiedGroups] = useState([]);
   const [combatStarted, setCombatStarted] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Estado para notificaciones de cambios HP/MP
+  const [statChanges, setStatChanges] = useState(null);
+  const [koAlert, setKoAlert] = useState(null);
+  const [statusEffectsApplied, setStatusEffectsApplied] = useState(null);
 
   // Escuchar eventos de actualización de turnos
   useEffect(() => {
@@ -40,9 +46,50 @@ export function useTurnOrderSocket(gameId) {
       setLoading(false);
     };
 
-    // Turno avanzado
-    const handleAdvanced = ({ currentTurnIndex, currentCharacter }) => {
+    // Turno avanzado (con efectos de estados y verificación de KO)
+    const handleAdvanced = ({
+      currentTurnIndex,
+      currentCharacter,
+      statusEffects,
+      koWarning,
+      characterKO,
+    }) => {
       setCurrentTurnIndex(currentTurnIndex);
+
+      // Notificar efectos de estados aplicados
+      if (statusEffects && statusEffects.appliedEffects?.length > 0) {
+        setStatusEffectsApplied(statusEffects);
+        // Limpiar después de 5 segundos
+        setTimeout(() => setStatusEffectsApplied(null), 5000);
+      }
+
+      // Notificar aviso de KO
+      if (koWarning) {
+        setKoAlert({
+          type: 'warning',
+          ...koWarning,
+        });
+        setTimeout(() => setKoAlert(null), 8000);
+      }
+
+      // Notificar KO confirmado
+      if (characterKO) {
+        setKoAlert({
+          type: characterKO.wasAlreadyKO ? 'info' : 'ko',
+          ...characterKO,
+        });
+        setTimeout(() => setKoAlert(null), 8000);
+
+        // Actualizar el turnOrder con el estado KO
+        setTurnOrder((prev) =>
+          prev.map((entry) =>
+            entry.characterId?.toString() ===
+            characterKO.characterId?.toString()
+              ? { ...entry, isKO: true }
+              : entry,
+          ),
+        );
+      }
     };
 
     // Turno forzado
@@ -63,6 +110,99 @@ export function useTurnOrderSocket(gameId) {
       setTiedGroups(tiedGroups || []);
     };
 
+    // HP modificado
+    const handleHpModified = ({
+      characterId,
+      oldHp,
+      newHp,
+      maxHp,
+      change,
+      reason,
+      koWarning,
+      isKO,
+    }) => {
+      setStatChanges({
+        type: 'hp',
+        characterId,
+        oldValue: oldHp,
+        newValue: newHp,
+        maxValue: maxHp,
+        change,
+        reason,
+        timestamp: Date.now(),
+      });
+
+      // Limpiar después de 3 segundos
+      setTimeout(() => setStatChanges(null), 3000);
+
+      // Si hay aviso de KO
+      if (koWarning) {
+        setKoAlert({
+          type: 'warning',
+          characterId,
+          message: '¡HP en 0! KO en el siguiente turno',
+        });
+        setTimeout(() => setKoAlert(null), 8000);
+      }
+    };
+
+    // Mana modificado
+    const handleManaModified = ({
+      characterId,
+      oldMana,
+      newMana,
+      maxMana,
+      change,
+      reason,
+    }) => {
+      setStatChanges({
+        type: 'mana',
+        characterId,
+        oldValue: oldMana,
+        newValue: newMana,
+        maxValue: maxMana,
+        change,
+        reason,
+        timestamp: Date.now(),
+      });
+
+      setTimeout(() => setStatChanges(null), 3000);
+    };
+
+    // Daño aplicado (puede tener múltiples targets)
+    const handleDamageApplied = ({ updates }) => {
+      for (const update of updates) {
+        if (update.koWarning) {
+          setKoAlert({
+            type: 'warning',
+            characterId: update.characterId,
+            message: '¡HP en 0! KO en el siguiente turno',
+          });
+          setTimeout(() => setKoAlert(null), 8000);
+        }
+      }
+    };
+
+    // Personaje revivido
+    const handleRevived = ({ characterId, name, hp }) => {
+      setKoAlert({
+        type: 'revived',
+        characterId,
+        name,
+        message: `¡${name} ha sido revivido con ${hp} HP!`,
+      });
+      setTimeout(() => setKoAlert(null), 5000);
+
+      // Actualizar turnOrder
+      setTurnOrder((prev) =>
+        prev.map((entry) =>
+          entry.characterId?.toString() === characterId?.toString()
+            ? { ...entry, isKO: false }
+            : entry,
+        ),
+      );
+    };
+
     // Escuchar errores
     const handleError = ({ message }) => {
       console.error('Turn order error:', message);
@@ -74,6 +214,10 @@ export function useTurnOrderSocket(gameId) {
     socket.on('turn-advanced', handleAdvanced);
     socket.on('turn-forced', handleForced);
     socket.on('turn-order-state', handleState);
+    socket.on('hp-modified', handleHpModified);
+    socket.on('mana-modified', handleManaModified);
+    socket.on('damage-applied', handleDamageApplied);
+    socket.on('character-revived', handleRevived);
     socket.on('error', handleError);
 
     return () => {
@@ -82,6 +226,10 @@ export function useTurnOrderSocket(gameId) {
       socket.off('turn-advanced', handleAdvanced);
       socket.off('turn-forced', handleForced);
       socket.off('turn-order-state', handleState);
+      socket.off('hp-modified', handleHpModified);
+      socket.off('mana-modified', handleManaModified);
+      socket.off('damage-applied', handleDamageApplied);
+      socket.off('character-revived', handleRevived);
       socket.off('error', handleError);
     };
   }, [getSocket, gameId]);
@@ -155,6 +303,36 @@ export function useTurnOrderSocket(gameId) {
     [getSocket, gameId],
   );
 
+  // Modificar HP (jugador o DM)
+  const modifyHp = useCallback(
+    (characterId, amount, reason) => {
+      const socket = getSocket();
+      if (!socket || !gameId) return;
+      socket.emit('modify-hp', { characterId, amount, gameId, reason });
+    },
+    [getSocket, gameId],
+  );
+
+  // Modificar Mana (jugador o DM)
+  const modifyMana = useCallback(
+    (characterId, amount, reason) => {
+      const socket = getSocket();
+      if (!socket || !gameId) return;
+      socket.emit('modify-mana', { characterId, amount, gameId, reason });
+    },
+    [getSocket, gameId],
+  );
+
+  // DM: Revivir personaje
+  const reviveCharacter = useCallback(
+    (characterId, hpAmount = 1) => {
+      const socket = getSocket();
+      if (!socket || !gameId) return;
+      socket.emit('dm:revive-character', { characterId, hpAmount, gameId });
+    },
+    [getSocket, gameId],
+  );
+
   // Obtener el personaje con el turno actual
   const currentCharacter = turnOrder[currentTurnIndex] || null;
 
@@ -168,6 +346,17 @@ export function useTurnOrderSocket(gameId) {
     [currentCharacter],
   );
 
+  // Verificar si un personaje está en KO
+  const isCharacterKO = useCallback(
+    (characterId) => {
+      const entry = turnOrder.find(
+        (t) => t.characterId?.toString() === characterId?.toString(),
+      );
+      return entry?.isKO || false;
+    },
+    [turnOrder],
+  );
+
   return {
     // Estado
     turnOrder,
@@ -176,6 +365,10 @@ export function useTurnOrderSocket(gameId) {
     tiedGroups,
     combatStarted,
     loading,
+    // Notificaciones
+    statChanges,
+    koAlert,
+    statusEffectsApplied,
     // Acciones DM
     calculateTurnOrder,
     resolveTie,
@@ -184,7 +377,12 @@ export function useTurnOrderSocket(gameId) {
     forceTurn,
     addToTurnOrder,
     removeFromTurnOrder,
+    reviveCharacter,
+    // Acciones HP/MP
+    modifyHp,
+    modifyMana,
     // Utilidades
     isCurrentTurn,
+    isCharacterKO,
   };
 }

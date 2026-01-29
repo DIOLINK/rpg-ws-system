@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { MAX_GAMES_DISPLAYED } from '../pages/GameLobby';
 import { classAbilityService } from '../services/classAbilityService';
@@ -18,11 +18,19 @@ const CLASS_ICONS = {
   default: '👤',
 };
 
-export const CharacterSheet = ({ character, onUpdate }) => {
+export const CharacterSheet = ({
+  character,
+  onUpdate,
+  statChanges,
+  isKO,
+  koWarning,
+}) => {
   const { isDM } = useAuth();
   const [editing, setEditing] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
   const [classAbilities, setClassAbilities] = useState([]);
+  const [showHpChange, setShowHpChange] = useState(false);
+  const [showManaChange, setShowManaChange] = useState(false);
   const [formData, setFormData] = useState({
     name: character.name,
     hp: character.stats.hp,
@@ -36,6 +44,46 @@ export const CharacterSheet = ({ character, onUpdate }) => {
   });
 
   const canEdit = isDM || character.canEdit;
+
+  // Detectar cambios de HP/MP para mostrar animación
+  const hpChange = useMemo(() => {
+    if (
+      statChanges &&
+      statChanges.type === 'hp' &&
+      statChanges.characterId === character._id
+    ) {
+      return statChanges.change;
+    }
+    return character.pendingChanges?.hp || 0;
+  }, [statChanges, character._id, character.pendingChanges]);
+
+  const manaChange = useMemo(() => {
+    if (
+      statChanges &&
+      statChanges.type === 'mana' &&
+      statChanges.characterId === character._id
+    ) {
+      return statChanges.change;
+    }
+    return character.pendingChanges?.mana || 0;
+  }, [statChanges, character._id, character.pendingChanges]);
+
+  // Mostrar animación de cambio cuando hay cambios
+  useEffect(() => {
+    if (hpChange !== 0) {
+      setShowHpChange(true);
+      const timer = setTimeout(() => setShowHpChange(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [hpChange, statChanges?.timestamp]);
+
+  useEffect(() => {
+    if (manaChange !== 0) {
+      setShowManaChange(true);
+      const timer = setTimeout(() => setShowManaChange(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [manaChange, statChanges?.timestamp]);
 
   // Cargar habilidades de clase si el personaje no tiene habilidades propias
   useEffect(() => {
@@ -156,243 +204,341 @@ export const CharacterSheet = ({ character, onUpdate }) => {
             )}
           </div>
 
-          {/* Barra HP */}
-          <div className="mb-4">
-            <div className="flex items-center mb-1">
-              <span className="text-red-400 text-lg mr-2">❤️</span>
-              <span className="text-xs text-gray-300">
-                HP: {character.stats.hp} / {character.stats.maxHp}
+          {/* KO Overlay */}
+          {(isKO || character.isKO) && (
+            <div className="absolute inset-0 bg-black/70 rounded-lg z-20 flex flex-col items-center justify-center">
+              <span className="text-6xl mb-2">💀</span>
+              <span className="text-2xl font-bold text-red-500">KO</span>
+              <span className="text-sm text-gray-400 mt-1">
+                Fuera de combate
               </span>
             </div>
-            <div className="w-full bg-gray-700 rounded-full h-4 overflow-hidden">
+          )}
+
+          {/* KO Warning Badge */}
+          {(koWarning || character.koWarning) && !isKO && !character.isKO && (
+            <div className="absolute top-12 left-2 z-20 bg-red-600 text-white px-2 py-1 rounded-lg text-xs font-bold animate-pulse flex items-center gap-1">
+              ⚠️ ¡KO próximo turno!
+            </div>
+          )}
+
+          {/* Barra HP */}
+          <div className="mb-4 relative">
+            <div className="flex items-center mb-1 justify-between">
+              <div className="flex items-center">
+                <span className="text-red-400 text-lg mr-2">❤️</span>
+                <span className="text-xs text-gray-300">
+                  HP: {character.stats.hp} / {character.stats.maxHp}
+                </span>
+              </div>
+              {/* Indicador de cambio HP */}
+              {showHpChange && hpChange !== 0 && (
+                <span
+                  className={`text-sm font-bold animate-bounce ${
+                    hpChange > 0 ? 'text-green-400' : 'text-red-400'
+                  }`}
+                >
+                  {hpChange > 0 ? '+' : ''}
+                  {hpChange}
+                </span>
+              )}
+            </div>
+            <div className="w-full bg-gray-700 rounded-full h-4 overflow-hidden relative">
+              {/* Barra de HP actual */}
               <div
-                className="bg-red-500 h-full transition-all duration-500"
+                className={`h-full transition-all duration-500 ${
+                  showHpChange && hpChange !== 0
+                    ? hpChange > 0
+                      ? 'bg-gradient-to-r from-red-500 to-green-400'
+                      : 'bg-gradient-to-r from-red-500 to-red-300'
+                    : 'bg-red-500'
+                }`}
                 style={{ width: `${hpPercentage}%` }}
               />
+              {/* Overlay de cambio */}
+              {showHpChange && hpChange !== 0 && (
+                <div
+                  className={`absolute top-0 h-full transition-all duration-300 ${
+                    hpChange > 0
+                      ? 'bg-green-400/40 animate-pulse'
+                      : 'bg-red-300/40 animate-pulse'
+                  }`}
+                  style={{
+                    width: `${Math.abs(hpChange / character.stats.maxHp) * 100}%`,
+                    left:
+                      hpChange > 0
+                        ? `${((character.stats.hp - hpChange) / character.stats.maxHp) * 100}%`
+                        : `${hpPercentage}%`,
+                  }}
+                />
+              )}
             </div>
           </div>
 
           {/* Barra MP */}
-          <div className="mb-2">
-            <div className="flex items-center mb-1">
-              <span className="text-blue-400 text-lg mr-2">💙</span>
-              <span className="text-xs text-gray-300">
-                MP: {character.stats.mana} / {character.stats.maxMana}
-              </span>
+          <div className="mb-2 relative">
+            <div className="flex items-center mb-1 justify-between">
+              <div className="flex items-center">
+                <span className="text-blue-400 text-lg mr-2">💙</span>
+                <span className="text-xs text-gray-300">
+                  MP: {character.stats.mana} / {character.stats.maxMana}
+                </span>
+              </div>
+              {/* Indicador de cambio Mana */}
+              {showManaChange && manaChange !== 0 && (
+                <span
+                  className={`text-sm font-bold animate-bounce ${
+                    manaChange > 0 ? 'text-cyan-400' : 'text-blue-300'
+                  }`}
+                >
+                  {manaChange > 0 ? '+' : ''}
+                  {manaChange}
+                </span>
+              )}
             </div>
-            <div className="w-full bg-gray-700 rounded-full h-4 overflow-hidden">
+            <div className="w-full bg-gray-700 rounded-full h-4 overflow-hidden relative">
+              {/* Barra de Mana actual */}
               <div
-                className="bg-blue-500 h-full transition-all duration-500"
+                className={`h-full transition-all duration-500 ${
+                  showManaChange && manaChange !== 0
+                    ? manaChange > 0
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-400'
+                      : 'bg-gradient-to-r from-blue-500 to-blue-300'
+                    : 'bg-blue-500'
+                }`}
                 style={{ width: `${manaPercentage}%` }}
               />
-            </div>
-          </div>
-
-          {/* Stats principales */}
-          <CharacterStats
-            stats={formData}
-            editing={editing && isDM}
-            onChange={({ name, value }) =>
-              setFormData((prev) => ({ ...prev, [name]: value }))
-            }
-          />
-
-          {/* Habilidades */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-semibold text-purple-400">
-                {CLASS_ICONS[character.classType] || CLASS_ICONS.default}
-                Habilidades
-              </h3>
-              <span className="text-xs text-gray-400">
-                {character.abilities?.length || 0} habilidades
-              </span>
-            </div>
-            {(() => {
-              const abilitiesToShow =
-                character.abilities && character.abilities.length > 0
-                  ? character.abilities
-                  : classAbilities;
-              return abilitiesToShow.length > 0 ? (
-                <AccordionList
-                  items={abilitiesToShow.map((ability) => ({
-                    id: ability.id,
-                    title: ability.name,
-                    subtitle:
-                      ability.manaCost > 0 ? `💙 ${ability.manaCost}` : '',
-                    icon: CLASS_ICONS[character.classType] || CLASS_ICONS.default,
-                    content: (
-                      <div>
-                        <div className="text-xs text-gray-400 mb-1">
-                          {ability.description}
-                        </div>
-                        {ability.damage && (
-                          <div className="text-xs text-orange-400 mb-1">
-                            Daño: {ability.damage}
-                          </div>
-                        )}
-                        {isDM &&
-                          character.abilities &&
-                          character.abilities.length > 0 && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onUpdate({ removeAbility: ability.id });
-                              }}
-                              className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-900/30 transition-colors mt-2"
-                            >
-                              🗑️ Eliminar
-                            </button>
-                          )}
-                      </div>
-                    ),
-                  }))}
+              {/* Overlay de cambio */}
+              {showManaChange && manaChange !== 0 && (
+                <div
+                  className={`absolute top-0 h-full transition-all duration-300 ${
+                    manaChange > 0
+                      ? 'bg-cyan-400/40 animate-pulse'
+                      : 'bg-blue-300/40 animate-pulse'
+                  }`}
+                  style={{
+                    width: `${Math.abs(manaChange / character.stats.maxMana) * 100}%`,
+                    left:
+                      manaChange > 0
+                        ? `${((character.stats.mana - manaChange) / character.stats.maxMana) * 100}%`
+                        : `${manaPercentage}%`,
+                  }}
                 />
-              ) : (
-                <p className="text-gray-500 text-center py-4 text-sm">
-                  No hay habilidades
-                </p>
-              );
-            })()}
-          </div>
-
-          {/* Estados */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-semibold text-purple-400">
-                ✨ Estados
-              </h3>
-              <span className="text-xs text-gray-400">
-                {character.status?.length || 0} efectos
-              </span>
+              )}
             </div>
-            {character.status && character.status.length > 0 ? (
+          </div>
+          <div className="w-full bg-gray-700 rounded-full h-4 overflow-hidden">
+            <div
+              className="bg-blue-500 h-full transition-all duration-500"
+              style={{ width: `${manaPercentage}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Stats principales */}
+        <CharacterStats
+          stats={formData}
+          editing={editing && isDM}
+          onChange={({ name, value }) =>
+            setFormData((prev) => ({ ...prev, [name]: value }))
+          }
+        />
+
+        {/* Habilidades */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold text-purple-400">
+              {CLASS_ICONS[character.classType] || CLASS_ICONS.default}
+              Habilidades
+            </h3>
+            <span className="text-xs text-gray-400">
+              {character.abilities?.length || 0} habilidades
+            </span>
+          </div>
+          {(() => {
+            const abilitiesToShow =
+              character.abilities && character.abilities.length > 0
+                ? character.abilities
+                : classAbilities;
+            return abilitiesToShow.length > 0 ? (
               <AccordionList
-                items={character.status.map((status) => {
-                  const getStatusIcon = (type) => {
-                    if (type === 'buff') return '🟢';
-                    if (type === 'debuff') return '🔴';
-                    return '⚪';
-                  };
-                  return {
-                    id: status.id,
-                    title: status.name,
-                    subtitle: status.duration
-                      ? `Duración: ${status.duration}`
-                      : '',
-                    icon: getStatusIcon(status.type),
-                    content: (
-                      <div>
-                        <div className="text-xs text-gray-400 mb-1">
-                          {status.description}
-                        </div>
-                        <div className="text-xs mb-1">
-                          Tipo:{' '}
-                          <span className="font-semibold">{status.type}</span>
-                        </div>
-                        {status.duration && (
-                          <div className="text-xs">
-                            Turnos restantes: {status.duration}
-                          </div>
-                        )}
+                items={abilitiesToShow.map((ability) => ({
+                  id: ability.id,
+                  title: ability.name,
+                  subtitle:
+                    ability.manaCost > 0 ? `💙 ${ability.manaCost}` : '',
+                  icon: CLASS_ICONS[character.classType] || CLASS_ICONS.default,
+                  content: (
+                    <div>
+                      <div className="text-xs text-gray-400 mb-1">
+                        {ability.description}
                       </div>
-                    ),
-                  };
-                })}
+                      {ability.damage && (
+                        <div className="text-xs text-orange-400 mb-1">
+                          Daño: {ability.damage}
+                        </div>
+                      )}
+                      {isDM &&
+                        character.abilities &&
+                        character.abilities.length > 0 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUpdate({ removeAbility: ability.id });
+                            }}
+                            className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-900/30 transition-colors mt-2"
+                          >
+                            🗑️ Eliminar
+                          </button>
+                        )}
+                    </div>
+                  ),
+                }))}
               />
             ) : (
-              <p className="text-gray-500 text-sm w-full text-center py-2">
-                Sin efectos activos
+              <p className="text-gray-500 text-center py-4 text-sm">
+                No hay habilidades
+              </p>
+            );
+          })()}
+        </div>
+
+        {/* Estados */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold text-purple-400">
+              ✨ Estados
+            </h3>
+            <span className="text-xs text-gray-400">
+              {character.status?.length || 0} efectos
+            </span>
+          </div>
+          {character.status && character.status.length > 0 ? (
+            <AccordionList
+              items={character.status.map((status) => {
+                const getStatusIcon = (type) => {
+                  if (type === 'buff') return '🟢';
+                  if (type === 'debuff') return '🔴';
+                  return '⚪';
+                };
+                return {
+                  id: status.id,
+                  title: status.name,
+                  subtitle: status.duration
+                    ? `Duración: ${status.duration}`
+                    : '',
+                  icon: getStatusIcon(status.type),
+                  content: (
+                    <div>
+                      <div className="text-xs text-gray-400 mb-1">
+                        {status.description}
+                      </div>
+                      <div className="text-xs mb-1">
+                        Tipo:{' '}
+                        <span className="font-semibold">{status.type}</span>
+                      </div>
+                      {status.duration && (
+                        <div className="text-xs">
+                          Turnos restantes: {status.duration}
+                        </div>
+                      )}
+                    </div>
+                  ),
+                };
+              })}
+            />
+          ) : (
+            <p className="text-gray-500 text-sm w-full text-center py-2">
+              Sin efectos activos
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* DORSO - Descripción e Inventario */}
+      <div
+        className="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl absolute inset-0 w-full h-full overflow-auto"
+        style={{
+          backfaceVisibility: 'hidden',
+          transform: 'rotateY(180deg)',
+        }}
+      >
+        {/* Header del dorso */}
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl select-none">📜</span>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-white">
+                {character.name}
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-400">
+                Descripción e Inventario
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Descripción */}
+        <div className="mb-6">
+          <h3 className="text-base font-semibold text-purple-400 mb-3 flex items-center gap-2">
+            📖 Descripción
+          </h3>
+          <div className="bg-gray-700/50 rounded-lg p-4">
+            {character.description ? (
+              <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+                {character.description}
+              </p>
+            ) : (
+              <p className="text-sm text-gray-500 italic text-center py-2">
+                Sin descripción
               </p>
             )}
           </div>
         </div>
 
-        {/* DORSO - Descripción e Inventario */}
-        <div
-          className="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl absolute inset-0 w-full h-full overflow-auto"
-          style={{
-            backfaceVisibility: 'hidden',
-            transform: 'rotateY(180deg)',
-          }}
-        >
-          {/* Header del dorso */}
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl select-none">📜</span>
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-white">
-                  {character.name}
-                </h2>
-                <p className="text-xs sm:text-sm text-gray-400">
-                  Descripción e Inventario
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Descripción */}
-          <div className="mb-6">
-            <h3 className="text-base font-semibold text-purple-400 mb-3 flex items-center gap-2">
-              📖 Descripción
+        {/* Inventario */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-semibold text-purple-400 flex items-center gap-2">
+              🎒 Inventario
             </h3>
-            <div className="bg-gray-700/50 rounded-lg p-4">
-              {character.description ? (
-                <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
-                  {character.description}
-                </p>
-              ) : (
-                <p className="text-sm text-gray-500 italic text-center py-2">
-                  Sin descripción
-                </p>
-              )}
-            </div>
+            <span className="text-xs text-gray-400">
+              {character.inventory?.length || 0} objetos
+            </span>
           </div>
-
-          {/* Inventario */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-semibold text-purple-400 flex items-center gap-2">
-                🎒 Inventario
-              </h3>
-              <span className="text-xs text-gray-400">
-                {character.inventory?.length || 0} objetos
-              </span>
-            </div>
-            {character.inventory && character.inventory.length > 0 ? (
-              <div className="space-y-2">
-                {character.inventory.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-gray-700/50 rounded-lg p-3 flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">📦</span>
-                      <div>
-                        <p className="text-sm font-medium text-white">
-                          {item.name}
+          {character.inventory && character.inventory.length > 0 ? (
+            <div className="space-y-2">
+              {character.inventory.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-gray-700/50 rounded-lg p-3 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">📦</span>
+                    <div>
+                      <p className="text-sm font-medium text-white">
+                        {item.name}
+                      </p>
+                      {item.description && (
+                        <p className="text-xs text-gray-400">
+                          {item.description}
                         </p>
-                        {item.description && (
-                          <p className="text-xs text-gray-400">
-                            {item.description}
-                          </p>
-                        )}
-                      </div>
+                      )}
                     </div>
-                    <span className="text-sm font-bold text-purple-400 bg-purple-900/30 px-2 py-1 rounded">
-                      x{item.quantity}
-                    </span>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="bg-gray-700/30 rounded-lg p-4">
-                <p className="text-sm text-gray-500 text-center">
-                  🎒 Inventario vacío
-                </p>
-              </div>
-            )}
-          </div>
+                  <span className="text-sm font-bold text-purple-400 bg-purple-900/30 px-2 py-1 rounded">
+                    x{item.quantity}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-gray-700/30 rounded-lg p-4">
+              <p className="text-sm text-gray-500 text-center">
+                🎒 Inventario vacío
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -407,6 +553,16 @@ CharacterSheet.propTypes = {
     level: PropTypes.number,
     canEdit: PropTypes.bool,
     description: PropTypes.string,
+    isKO: PropTypes.bool,
+    koWarning: PropTypes.bool,
+    pendingChanges: PropTypes.shape({
+      hp: PropTypes.number,
+      mana: PropTypes.number,
+      appliedAt: PropTypes.oneOfType([
+        PropTypes.string,
+        PropTypes.instanceOf(Date),
+      ]),
+    }),
     inventory: PropTypes.arrayOf(
       PropTypes.shape({
         id: PropTypes.string,
@@ -441,8 +597,30 @@ CharacterSheet.propTypes = {
         description: PropTypes.string,
         type: PropTypes.oneOf(['buff', 'debuff', 'neutral']),
         duration: PropTypes.number,
+        effects: PropTypes.shape({
+          hpPerTurn: PropTypes.number,
+          manaPerTurn: PropTypes.number,
+          statModifiers: PropTypes.shape({
+            strength: PropTypes.number,
+            intelligence: PropTypes.number,
+            dexterity: PropTypes.number,
+            defense: PropTypes.number,
+          }),
+        }),
       }),
     ),
   }).isRequired,
   onUpdate: PropTypes.func.isRequired,
+  statChanges: PropTypes.shape({
+    type: PropTypes.oneOf(['hp', 'mana']),
+    characterId: PropTypes.string,
+    oldValue: PropTypes.number,
+    newValue: PropTypes.number,
+    maxValue: PropTypes.number,
+    change: PropTypes.number,
+    reason: PropTypes.string,
+    timestamp: PropTypes.number,
+  }),
+  isKO: PropTypes.bool,
+  koWarning: PropTypes.bool,
 };

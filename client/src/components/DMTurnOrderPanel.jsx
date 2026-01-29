@@ -19,15 +19,22 @@ export function DMTurnOrderPanel({
   onAddToTurnOrder,
   onRemoveFromTurnOrder,
   onResolveTie,
+  onReviveCharacter,
 }) {
   const [selectedForTie, setSelectedForTie] = useState({});
   const [showAddCharacter, setShowAddCharacter] = useState(false);
+  const [reviveHp, setReviveHp] = useState({});
 
   // Personajes que no están en el orden de turnos
   const charactersNotInOrder = useMemo(() => {
     const inOrderIds = new Set(turnOrder.map((t) => t.characterId?.toString()));
     return characters.filter((c) => !inOrderIds.has(c._id?.toString()));
   }, [characters, turnOrder]);
+
+  // Personajes en KO
+  const koCharacters = useMemo(() => {
+    return turnOrder.filter((entry) => entry.isKO);
+  }, [turnOrder]);
 
   // Manejar cambio de posición en grupo empatado
   const handleTiePositionChange = (groupIndex, characterId, newPosition) => {
@@ -125,16 +132,23 @@ export function DMTurnOrderPanel({
               <div
                 key={entry.characterId}
                 className={`flex items-center justify-between p-2 rounded-lg transition-colors ${
-                  idx === currentTurnIndex
-                    ? 'bg-green-600/30 border border-green-500/50'
-                    : 'bg-gray-700/50 hover:bg-gray-700'
+                  entry.isKO
+                    ? 'bg-red-900/30 border border-red-500/50 opacity-60'
+                    : idx === currentTurnIndex
+                      ? 'bg-green-600/30 border border-green-500/50'
+                      : 'bg-gray-700/50 hover:bg-gray-700'
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500 w-5">{idx + 1}.</span>
+                  {entry.isKO && <span className="text-sm">💀</span>}
                   <span
                     className={`font-medium text-sm ${
-                      idx === currentTurnIndex ? 'text-green-300' : 'text-white'
+                      entry.isKO
+                        ? 'text-red-400 line-through'
+                        : idx === currentTurnIndex
+                          ? 'text-green-300'
+                          : 'text-white'
                     }`}
                   >
                     {entry.name}
@@ -144,7 +158,9 @@ export function DMTurnOrderPanel({
                   </span>
                 </div>
                 <div className="flex gap-1">
-                  {idx !== currentTurnIndex && (
+                  {entry.isKO ? (
+                    <span className="text-xs text-red-400 px-2">KO</span>
+                  ) : idx !== currentTurnIndex ? (
                     <>
                       <button
                         onClick={() => onForceTurn(entry.characterId)}
@@ -163,8 +179,7 @@ export function DMTurnOrderPanel({
                         ✖️
                       </button>
                     </>
-                  )}
-                  {idx === currentTurnIndex && (
+                  ) : (
                     <span className="text-xs text-green-400 px-2">
                       ▶ Activo
                     </span>
@@ -172,6 +187,66 @@ export function DMTurnOrderPanel({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Personajes en KO */}
+      {koCharacters.length > 0 && (
+        <div className="mb-4 p-3 bg-red-900/30 border border-red-500/30 rounded-lg">
+          <h4 className="text-sm font-semibold text-red-400 mb-2 flex items-center gap-2">
+            💀 Personajes KO ({koCharacters.length})
+          </h4>
+          <div className="space-y-2">
+            {koCharacters.map((entry) => {
+              const char = characters.find(
+                (c) => c._id?.toString() === entry.characterId?.toString(),
+              );
+              return (
+                <div
+                  key={entry.characterId}
+                  className="flex items-center justify-between p-2 bg-gray-800/50 rounded"
+                >
+                  <div>
+                    <span className="text-sm text-red-300">{entry.name}</span>
+                    <span className="text-xs text-gray-500 ml-2">
+                      Max HP: {char?.stats?.maxHp || 10}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max={char?.stats?.maxHp || 10}
+                      value={reviveHp[entry.characterId?.toString()] || 1}
+                      onChange={(e) =>
+                        setReviveHp((prev) => ({
+                          ...prev,
+                          [entry.characterId?.toString()]:
+                            Number.parseInt(e.target.value) || 1,
+                        }))
+                      }
+                      className="w-16 px-2 py-1 bg-gray-700 rounded text-xs text-center"
+                      placeholder="HP"
+                    />
+                    <button
+                      onClick={() => {
+                        if (onReviveCharacter) {
+                          onReviveCharacter(
+                            entry.characterId,
+                            reviveHp[entry.characterId?.toString()] || 1,
+                          );
+                        }
+                      }}
+                      disabled={loading || !onReviveCharacter}
+                      className="px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded text-xs font-medium transition-colors"
+                    >
+                      ✨ Revivir
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -309,6 +384,7 @@ DMTurnOrderPanel.propTypes = {
       name: PropTypes.string,
       initiative: PropTypes.number,
       position: PropTypes.number,
+      isKO: PropTypes.bool,
     }),
   ),
   currentTurnIndex: PropTypes.number,
@@ -327,6 +403,7 @@ DMTurnOrderPanel.propTypes = {
   onAddToTurnOrder: PropTypes.func,
   onRemoveFromTurnOrder: PropTypes.func,
   onResolveTie: PropTypes.func,
+  onReviveCharacter: PropTypes.func,
 };
 
 DMTurnOrderPanel.defaultProps = {
