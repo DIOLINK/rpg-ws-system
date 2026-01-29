@@ -94,20 +94,22 @@ router.post('/spawn', authenticateUser, async (req, res) => {
   try {
     const { gameId, templateId, customData } = req.body;
 
-    // Verificar que el usuario es el DM de la partida
-    const game = await Game.findById(gameId);
+    // Buscar la partida y poblar el DM
+    const game = await Game.findById(gameId).populate('dmId');
     if (!game) {
       return res.status(404).json({ message: 'Partida no encontrada' });
     }
 
-    if (game.dmId !== req.user.uid) {
+    // game.dmId es un objeto User, comparar googleId
+    if (!game.dmId || game.dmId.googleId !== req.user.googleId) {
       return res.status(403).json({ message: 'Solo el DM puede crear NPCs' });
     }
 
     let npcData = {
       isNPC: true,
       gameId,
-      playerId: req.user.uid, // El DM es el "dueño" del NPC
+      // Si el usuario tiene _id (Mongo), usarlo; si no, usar googleId
+      playerId: req.user._id || req.user.uid || req.user.googleId,
       validated: true, // NPCs están validados automáticamente
     };
 
