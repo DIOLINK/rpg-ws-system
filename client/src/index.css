@@ -115,3 +115,24 @@ body {
     font-size: 16px;
   }
 }
+
+/* Todos los componentes ocupan 90% de ancho en pantallas pequeñas */
+@media (max-width: 650px) {
+  #root > *,
+  .component,
+  main,
+  section,
+  article,
+  form,
+  nav,
+  aside,
+  header,
+  footer {
+    width: 90vw !important;
+    max-width: 90vw !important;
+    min-width: unset !important;
+    box-sizing: border-box;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
