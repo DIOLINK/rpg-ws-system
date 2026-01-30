@@ -2,52 +2,16 @@ import { verifyToken } from '../middleware/auth.js';
 import { Character } from '../models/Character.js';
 import { Game } from '../models/Game.js';
 import { User } from '../models/User.js';
+import { TurnOrchestrator } from '../utils/TurnOrchestrator.js';
 
 // Función para calcular iniciativa basada en dexterity
-const calculateInitiative = (characters) => {
-  return characters
-    .map((char) => ({
-      characterId: char._id,
-      name: char.name,
-      initiative: char.stats?.dexterity || 1,
-      isKO: char.isKO || false,
-      isNPC: char.isNPC || false,
-    }))
-    .sort((a, b) => b.initiative - a.initiative) // Mayor dexterity primero
-    .map((entry, index) => ({ ...entry, position: index }));
+const calculateInitiative = async (characters) => {
+  return await TurnOrchestrator.calculateInitiative(characters);
 };
 
 // Función para encontrar grupos de empate
 const findTiedGroups = (turnOrder) => {
-  const groups = [];
-  let currentGroup = [];
-  let currentInitiative = null;
-
-  for (const entry of turnOrder) {
-    if (currentInitiative === null || entry.initiative === currentInitiative) {
-      currentGroup.push(entry);
-      currentInitiative = entry.initiative;
-    } else {
-      if (currentGroup.length > 1) {
-        groups.push({
-          initiative: currentInitiative,
-          characters: currentGroup,
-        });
-      }
-      currentGroup = [entry];
-      currentInitiative = entry.initiative;
-    }
-  }
-
-  // Verificar el último grupo
-  if (currentGroup.length > 1) {
-    groups.push({
-      initiative: currentInitiative,
-      characters: currentGroup,
-    });
-  }
-
-  return groups;
+  return TurnOrchestrator.findTiedGroups(turnOrder);
 };
 
 // Función para aplicar efectos de estados al inicio del turno
@@ -160,7 +124,9 @@ export const setupGameSockets = (io) => {
       try {
         const token = socket.handshake.auth.token;
         const firebaseUser = await verifyToken(token);
-        return await User.findOne({ googleId: firebaseUser.sub });
+        const googleId =
+          firebaseUser.uid || firebaseUser.sub || firebaseUser.user_id;
+        return await User.findOne({ googleId });
       } catch {
         return null;
       }
@@ -183,7 +149,9 @@ export const setupGameSockets = (io) => {
     const isDM = async (socket, gameId) => {
       const token = socket.handshake.auth.token;
       const firebaseUser = await verifyToken(token);
-      const user = await User.findOne({ googleId: firebaseUser.sub });
+      const googleId =
+        firebaseUser.uid || firebaseUser.sub || firebaseUser.user_id;
+      const user = await User.findOne({ googleId });
       const game = await Game.findById(gameId);
 
       if (!user || !game) return false;
@@ -195,8 +163,22 @@ export const setupGameSockets = (io) => {
 
     // DM: Calcular orden de turnos basado en dexterity
     socket.on('dm:calculate-turn-order', async ({ gameId }) => {
-      if (!(await isDM(socket, gameId))) {
-        socket.emit('error', { message: 'No autorizado' });
+      try {
+        console.log(
+          `📥 [socket:${socket.id}] dm:calculate-turn-order received for gameId=${gameId}`,
+        );
+        const authorized = await isDM(socket, gameId);
+        console.log(`🔐 [socket:${socket.id}] isDM check result:`, authorized);
+        if (!authorized) {
+          socket.emit('error', { message: 'No autorizado' });
+          return;
+        }
+      } catch (err) {
+        console.log(
+          `❌ [socket:${socket.id}] error during isDM check:`,
+          err.message || err,
+        );
+        socket.emit('error', { message: 'Error de autorización' });
         return;
       }
 
@@ -227,7 +209,7 @@ export const setupGameSockets = (io) => {
         const allCharacters = [...playerCharacters, ...npcCharacters];
 
         // Calcular iniciativa
-        const turnOrder = calculateInitiative(allCharacters);
+        const turnOrder = await calculateInitiative(allCharacters);
 
         // Guardar en la partida
         game.turnOrder = turnOrder;
@@ -252,8 +234,29 @@ export const setupGameSockets = (io) => {
 
     // DM: Resolver empate manualmente (reordenar personajes empatados)
     socket.on('dm:resolve-tie', async ({ gameId, reorderedCharacters }) => {
-      if (!(await isDM(socket, gameId))) {
-        socket.emit('error', { message: 'No autorizado' });
+      try {
+        console.log(
+          `📥 [socket:${socket.id}] dm:resolve-tie received for gameId=${gameId}`,
+        );
+        console.log(
+          '📥 payload reorderedCharacters:',
+          JSON.stringify(reorderedCharacters),
+        );
+        const authorized = await isDM(socket, gameId);
+        console.log(
+          `🔐 [socket:${socket.id}] isDM check result for resolve-tie:`,
+          authorized,
+        );
+        if (!authorized) {
+          socket.emit('error', { message: 'No autorizado' });
+          return;
+        }
+      } catch (err) {
+        console.log(
+          `❌ [socket:${socket.id}] error during isDM check (resolve-tie):`,
+          err.message || err,
+        );
+        socket.emit('error', { message: 'Error de autorización' });
         return;
       }
 
