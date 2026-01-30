@@ -154,14 +154,44 @@ export const useGameSocket = (gameId, onJoinedGame) => {
     });
 
     socket.current.on('damage-applied', ({ updates }) => {
-      setCharacters((prev) =>
-        prev.map((char) => {
+      setCharacters((prev) => {
+        // Solo mostrar toast si NO es DM
+        if (!isDM && user && user._id) {
+          // Filtrar personajes del usuario actual que recibieron daño
+          const affected = prev
+            .map((char) => {
+              const update = updates.find((u) => u.characterId === char._id);
+              if (
+                update &&
+                update.hpChange &&
+                update.hpChange < 0 &&
+                char.player &&
+                char.player._id === user._id
+              ) {
+                return { name: char.name, dmg: -update.hpChange };
+              }
+              return null;
+            })
+            .filter(Boolean);
+          if (affected.length > 0) {
+            const msg =
+              affected.length === 1
+                ? `💥 ¡Has recibido ${affected[0].dmg} de daño!`
+                : `💥 Daño masivo: ${affected.map((a) => `${a.name}: ${a.dmg} HP`).join(', ')}`;
+            addToast({
+              type: 'warning',
+              message: msg,
+            });
+          }
+        }
+        // Actualizar HP de todos los personajes
+        return prev.map((char) => {
           const update = updates.find((u) => u.characterId === char._id);
           return update
             ? { ...char, stats: { ...char.stats, hp: update.hp } }
             : char;
-        }),
-      );
+        });
+      });
     });
 
     socket.current.on('status-added', ({ characterId, status }) => {

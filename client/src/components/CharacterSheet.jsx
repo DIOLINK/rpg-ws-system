@@ -366,7 +366,10 @@ export const CharacterSheet = ({
 
   return (
     <Collapsible title={`🧑 Ficha de ${character.name}`} defaultOpen>
-      <div className="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl relative">
+      <div
+        className="bg-gray-800 rounded-lg p-3 sm:p-6 shadow-xl relative max-w-full w-full"
+        style={{ boxSizing: 'border-box' }}
+      >
         {/* Botón Flip - Esquina superior derecha */}
         <button
           onClick={handleFlip}

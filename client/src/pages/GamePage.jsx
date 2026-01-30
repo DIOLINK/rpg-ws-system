@@ -279,8 +279,9 @@ export const GamePage = () => {
         {/* Layout principal */}
         <div
           className={`grid grid-cols-1 ${
-            isDM ? 'lg:grid-cols-3' : ''
+            isDM ? 'md:grid-cols-2' : ''
           } gap-3 sm:gap-4 md:gap-6`}
+          style={{ maxWidth: '1200px', margin: '0 auto' }}
         >
           {/* Panel de Control de Turnos para el DM */}
           {isDM && (
@@ -342,9 +343,31 @@ export const GamePage = () => {
             </div>
           )}
 
-          {/* Mi personaje - Destacado */}
-          {myCharacter && (
-            <div className={isDM ? 'lg:col-span-2' : 'col-span-1 w-full'}>
+          {/* Mi personaje - Destacado (jugador: dentro del grid, DM: fuera del grid para ancho completo) */}
+          {!isDM && myCharacter && (
+            <div className="col-span-1 w-full">
+              <div className="mb-2 sm:mb-3">
+                <h2 className="text-lg sm:text-xl font-semibold text-purple-400 flex items-center gap-2">
+                  ⭐ Tu Personaje
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-400">
+                  Solo tú puedes ver esta información completa
+                </p>
+              </div>
+              <CharacterSheet
+                character={myCharacter}
+                onUpdate={handleCharacterUpdate}
+                statChanges={statChanges}
+                isKO={isCharacterKO(myCharacter._id)}
+                koWarning={myCharacter.koWarning}
+                gameId={gameId}
+              />
+            </div>
+          )}
+
+          {/* Ficha del personaje del DM dentro del grid, con ancho máximo para no ocupar toda la pantalla */}
+          {isDM && myCharacter && (
+            <div className="w-full" style={{ maxWidth: 500 }}>
               <div className="mb-2 sm:mb-3">
                 <h2 className="text-lg sm:text-xl font-semibold text-purple-400 flex items-center gap-2">
                   ⭐ Tu Personaje
@@ -437,11 +460,11 @@ export const GamePage = () => {
             </div>
 
             {/* Grid responsive */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {otherCharacters.map((char) => (
                 <div
                   key={char._id}
-                  className="transform hover:scale-105 transition-transform"
+                  className="transform hover:scale-105 transition-transform max-w-full"
                 >
                   <CharacterSheet
                     character={char}
