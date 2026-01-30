@@ -207,9 +207,17 @@ export const setupGameSockets = (io) => {
 
         // Combinar jugadores y NPCs
         const allCharacters = [...playerCharacters, ...npcCharacters];
+        console.log(
+          `📊 [socket:${socket.id}] allCharacters: ${allCharacters.length} (players: ${playerCharacters.length}, npcs: ${npcCharacters.length})`,
+        );
 
         // Calcular iniciativa
         const turnOrder = await calculateInitiative(allCharacters);
+        console.log(
+          `📊 [socket:${socket.id}] turnOrder calculated:`,
+          turnOrder.length,
+          'characters',
+        );
 
         // Guardar en la partida
         game.turnOrder = turnOrder;
@@ -219,6 +227,7 @@ export const setupGameSockets = (io) => {
 
         // Encontrar empates
         const tiedGroups = findTiedGroups(turnOrder);
+        console.log(`📊 [socket:${socket.id}] tiedGroups:`, tiedGroups);
 
         // Emitir a todos en la partida
         io.to(`game:${gameId}`).emit('turn-order-calculated', {

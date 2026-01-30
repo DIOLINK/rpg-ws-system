@@ -35,12 +35,21 @@ export class TurnOrchestrator {
     let currentGroup = [];
     let currentInitiative = null;
     for (const entry of turnOrder) {
+      // Asegurarse de que cada entry tenga characterId
+      const safeEntry = {
+        characterId: entry.characterId ?? entry._id ?? null,
+        name: entry.name ?? '',
+        initiative: entry.initiative ?? 0,
+        position: entry.position ?? 0,
+        isNPC: entry.isNPC ?? false,
+        isKO: entry.isKO ?? false,
+      };
       if (
         currentInitiative === null ||
-        entry.initiative === currentInitiative
+        safeEntry.initiative === currentInitiative
       ) {
-        currentGroup.push(entry);
-        currentInitiative = entry.initiative;
+        currentGroup.push(safeEntry);
+        currentInitiative = safeEntry.initiative;
       } else {
         if (currentGroup.length > 1) {
           groups.push({
@@ -48,8 +57,8 @@ export class TurnOrchestrator {
             characters: currentGroup,
           });
         }
-        currentGroup = [entry];
-        currentInitiative = entry.initiative;
+        currentGroup = [safeEntry];
+        currentInitiative = safeEntry.initiative;
       }
     }
     if (currentGroup.length > 1) {
