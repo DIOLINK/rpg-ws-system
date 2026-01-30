@@ -20,6 +20,8 @@ export function DMTurnOrderPanel({
   onRemoveFromTurnOrder,
   onResolveTie,
   onReviveCharacter,
+  isDM,
+  onEndCombat,
 }) {
   const [selectedForTie, setSelectedForTie] = useState({});
   const [showAddCharacter, setShowAddCharacter] = useState(false);
@@ -54,6 +56,16 @@ export function DMTurnOrderPanel({
       characterId: char.characterId,
       newPosition: positions[char.characterId?.toString()] ?? char.position,
     }));
+    console.log(
+      '[DMTurnOrderPanel] apply resolve tie payload:',
+      reorderedCharacters,
+    );
+    if (!isDM) {
+      console.error(
+        'Intento de aplicar orden de empate desde cliente sin permisos DM',
+      );
+      return;
+    }
     onResolveTie(reorderedCharacters);
     setSelectedForTie((prev) => {
       const next = { ...prev };
@@ -81,7 +93,10 @@ export function DMTurnOrderPanel({
       {/* Botón para iniciar/recalcular combate */}
       {combatStarted ? (
         <button
-          onClick={onCalculateTurnOrder}
+          onClick={() => (
+            onCalculateTurnOrder(),
+            console.log('Calculating turn order...')
+          )}
           disabled={loading}
           className="w-full py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-sm transition-colors mb-4"
         >
@@ -89,11 +104,14 @@ export function DMTurnOrderPanel({
         </button>
       ) : (
         <button
-          onClick={onCalculateTurnOrder}
+          onClick={() => (
+            onCalculateTurnOrder(),
+            console.log('Calculating turn order...')
+          )}
           disabled={loading || characters.length === 0}
           className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors mb-4"
         >
-          🎲 Calcular Iniciativa (Dexterity)
+          🎲 Calcular Iniciativa
         </button>
       )}
 
@@ -111,11 +129,18 @@ export function DMTurnOrderPanel({
               </span>
             </div>
             <button
-              onClick={onNextTurn}
+              onClick={() => onNextTurn()}
               disabled={loading}
               className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded-lg font-medium transition-colors"
             >
-              ⏭️ Siguiente
+              ⏭️
+            </button>
+            <button
+              onClick={() => onEndCombat()}
+              disabled={loading}
+              className="ml-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 rounded-lg font-medium transition-colors"
+            >
+              🔚
             </button>
           </div>
         </div>
@@ -403,6 +428,8 @@ DMTurnOrderPanel.propTypes = {
   onAddToTurnOrder: PropTypes.func,
   onRemoveFromTurnOrder: PropTypes.func,
   onResolveTie: PropTypes.func,
+  isDM: PropTypes.bool,
+  onEndCombat: PropTypes.func,
   onReviveCharacter: PropTypes.func,
 };
 

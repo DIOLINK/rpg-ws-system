@@ -18,22 +18,26 @@ export default function TurnOrderBar({
   userId,
   combatStarted,
   onClickCharacter,
+  characters = [],
 }) {
   // Transformar el formato del servidor al formato del componente visual
   const displayOrder = useMemo(
     () =>
-      turnOrder.map((entry, idx) => ({
-        id: entry.characterId,
-        name: entry.name,
-        initiative: entry.initiative,
-        position: entry.position,
-        isCurrent: idx === currentTurnIndex,
-        // Nota: necesitarías pasar la info del player si quieres mostrar "Tú"
-        isYou: false, // Se puede mejorar pasando los characters con player info
-        isPlayer: !entry.isNPC,
-        isNPC: entry.isNPC || false,
-      })),
-    [turnOrder, currentTurnIndex],
+      turnOrder.map((entry, idx) => {
+        const char = characters.find((c) => c._id === entry.characterId);
+        const isYou = char && char.playerId === userId;
+        return {
+          id: entry.characterId,
+          name: entry.name,
+          initiative: entry.initiative,
+          position: entry.position,
+          isCurrent: idx === currentTurnIndex,
+          isYou,
+          isPlayer: !entry.isNPC,
+          isNPC: entry.isNPC || false,
+        };
+      }),
+    [turnOrder, currentTurnIndex, characters, userId],
   );
 
   if (!combatStarted || turnOrder.length === 0) {

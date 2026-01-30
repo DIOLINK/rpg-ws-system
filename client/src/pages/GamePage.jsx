@@ -151,6 +151,7 @@ export const GamePage = () => {
     // Acciones DM
     calculateTurnOrder,
     resolveTie,
+    endCombat,
     nextTurn,
     forceTurn,
     addToTurnOrder,
@@ -161,7 +162,7 @@ export const GamePage = () => {
     modifyMana,
     // Utilidades
     isCharacterKO,
-  } = useTurnOrderSocket(gameId);
+  } = useTurnOrderSocket(gameId, getSocket, emit);
 
   // Redirigir a asignación de personaje si el usuario no tiene personaje en la partida y no es DM
   useEffect(() => {
@@ -279,6 +280,7 @@ export const GamePage = () => {
         currentTurnIndex={currentTurnIndex}
         userId={user._id}
         combatStarted={combatStarted}
+        characters={characters}
         onClickCharacter={isDM ? (char) => forceTurn(char.id) : undefined}
       />
 
@@ -305,6 +307,8 @@ export const GamePage = () => {
                 onAddToTurnOrder={addToTurnOrder}
                 onRemoveFromTurnOrder={removeFromTurnOrder}
                 onResolveTie={resolveTie}
+                isDM={isDM}
+                onEndCombat={endCombat}
                 onReviveCharacter={reviveCharacter}
               />
             </div>

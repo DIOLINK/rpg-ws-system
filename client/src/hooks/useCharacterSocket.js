@@ -30,21 +30,21 @@ export const useCharacterSocket = (initialCharacters = []) => {
 
     socket.current.on('connect', () => {
       setConnected(true);
-      console.log('🔌 Socket de personajes conectado');
+      // console.log('🔌 Socket de personajes conectado');
       // Unirse al canal personal del usuario
       socket.current.emit('join-user-channel');
     });
 
     socket.current.on('disconnect', () => {
       setConnected(false);
-      console.log('🔌 Socket de personajes desconectado');
+      // console.log('🔌 Socket de personajes desconectado');
     });
 
     // Evento de validación de personaje
     socket.current.on(
       'character-validated',
       ({ characterId, validated, comment }) => {
-        console.log('📥 character-validated:', { characterId, validated });
+        // console.log('📥 character-validated:', { characterId, validated });
         setCharacters((prev) =>
           prev.map((char) =>
             char._id === characterId
@@ -57,7 +57,7 @@ export const useCharacterSocket = (initialCharacters = []) => {
 
     // Evento de personaje actualizado (general)
     socket.current.on('character-updated', (updatedCharacter) => {
-      console.log('📥 character-updated:', updatedCharacter);
+      // console.log('📥 character-updated:', updatedCharacter);
       setCharacters((prev) =>
         prev.map((char) =>
           char._id === updatedCharacter._id ||
@@ -70,13 +70,13 @@ export const useCharacterSocket = (initialCharacters = []) => {
 
     // Evento de personaje eliminado
     socket.current.on('character-deleted', ({ characterId }) => {
-      console.log('📥 character-deleted:', characterId);
+      // console.log('📥 character-deleted:', characterId);
       setCharacters((prev) => prev.filter((char) => char._id !== characterId));
     });
 
     // Evento de personaje creado
     socket.current.on('character-created', (newCharacter) => {
-      console.log('📥 character-created:', newCharacter);
+      // console.log('📥 character-created:', newCharacter);
       setCharacters((prev) => {
         // Evitar duplicados
         if (prev.some((c) => c._id === newCharacter._id)) return prev;
@@ -140,7 +140,7 @@ export const useCharacterSocket = (initialCharacters = []) => {
     socket.current.on(
       'inventory-updated',
       ({ characterId, inventory, gold }) => {
-        console.log('📦 [CharacterSocket] inventory-updated:', characterId);
+        // console.log('📦 [CharacterSocket] inventory-updated:', characterId);
         setCharacters((prev) =>
           prev.map((char) =>
             char._id === characterId

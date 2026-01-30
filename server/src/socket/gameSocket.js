@@ -449,6 +449,36 @@ export const setupGameSockets = (io) => {
       }
     });
 
+    // DM: Terminar combate
+    socket.on('dm:end-combat', async ({ gameId }) => {
+      if (!(await isDM(socket, gameId))) {
+        socket.emit('error', { message: 'No autorizado' });
+        return;
+      }
+
+      try {
+        const game = await Game.findById(gameId);
+        if (!game) {
+          socket.emit('error', { message: 'Partida no encontrada' });
+          return;
+        }
+
+        game.combatStarted = false;
+        game.currentTurnIndex = 0;
+        await game.save();
+
+        io.to(`game:${gameId}`).emit('turn-order-updated', {
+          turnOrder: game.turnOrder,
+          currentTurnIndex: game.currentTurnIndex,
+          tiedGroups: TurnOrchestrator.findTiedGroups(game.turnOrder),
+          updatedBy: 'dm',
+          combatStarted: false,
+        });
+      } catch (error) {
+        socket.emit('error', { message: error.message });
+      }
+    });
+
     // DM: Forzar turno a un personaje específico
     socket.on('dm:force-turn', async ({ gameId, characterId }) => {
       if (!(await isDM(socket, gameId))) {

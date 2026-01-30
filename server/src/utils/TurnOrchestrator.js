@@ -12,7 +12,12 @@ export class TurnOrchestrator {
             (id) => id,
           );
           if (equippedItemIds.length > 0) {
-            const items = await Item.find({ _id: { $in: equippedItemIds } });
+            // equippedItemIds son _ids de inventory, no de Item
+            const equippedInventoryItems = char.inventory.filter((inv) =>
+              equippedItemIds.includes(inv._id),
+            );
+            const itemRefs = equippedInventoryItems.map((inv) => inv.itemRef);
+            const items = await Item.find({ _id: { $in: itemRefs } });
             const dexterityBonus = items.reduce(
               (sum, item) => sum + (item.statModifiers?.dexterity || 0),
               0,

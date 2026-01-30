@@ -39,17 +39,17 @@ export const useGameSocket = (gameId, onJoinedGame) => {
     });
 
     // Escuchar TODOS los eventos para depuración
-    socket.current.onAny((eventName, ...args) => {
-      console.log(`📨 [GameSocket] Evento recibido: ${eventName}`, args);
-    });
+    // socket.current.onAny((eventName, ...args) => {
+    //   console.log(`📨 [GameSocket] Evento recibido: ${eventName}`, args);
+    // });
 
     // Evento de respuesta de venta (solo para jugadores, no DM)
     socket.current.on('sell-response', (response) => {
-      console.log('💰 [GameSocket] sell-response recibido:', response);
+      // console.log('💰 [GameSocket] sell-response recibido:', response);
 
       // El DM no debe ver este toast
       if (isDM) {
-        console.log('💰 DM ignorando sell-response');
+        // console.log('💰 DM ignorando sell-response');
         return;
       }
 
@@ -73,7 +73,7 @@ export const useGameSocket = (gameId, onJoinedGame) => {
 
     // Evento de respuesta de tienda (cuando jugador acepta/rechaza oferta del DM)
     socket.current.on('shop-response', (response) => {
-      console.log('🏪 [GameSocket] shop-response recibido:', response);
+      // console.log('🏪 [GameSocket] shop-response recibido:', response);
 
       // Solo el DM debe ver este toast
       if (!isDM) {
@@ -109,7 +109,7 @@ export const useGameSocket = (gameId, onJoinedGame) => {
 
     // Eventos de personaje
     socket.current.on('character-updated', (updatedData) => {
-      console.log('📥 [GameSocket] character-updated:', updatedData);
+      // console.log('📥 [GameSocket] character-updated:', updatedData);
       setCharacters((prev) =>
         prev.map((char) => {
           if (
@@ -188,11 +188,11 @@ export const useGameSocket = (gameId, onJoinedGame) => {
     socket.current.on(
       'inventory-updated',
       ({ characterId, inventory, gold, itemData, action }) => {
-        console.log('📦 [GameSocket] inventory-updated:', {
-          characterId,
-          action,
-          itemData,
-        });
+        // console.log('📦 [GameSocket] inventory-updated:', {
+        //   characterId,
+        //   action,
+        //   itemData,
+        // });
         setCharacters((prev) =>
           prev.map((char) =>
             char._id === characterId
@@ -227,17 +227,26 @@ export const useGameSocket = (gameId, onJoinedGame) => {
   }, [gameId]);
 
   const emit = (event, data) => {
-    console.log(
-      '📡 Socket emit:',
-      event,
-      data,
-      'Socket connected:',
-      socket.current?.connected,
-    );
+    // Advertencia si el usuario no parece ser DM, pero permitir envío
+    if (event && event.startsWith && event.startsWith('dm:') && !isDM) {
+      console.warn(
+        '⚠️ Emisión de evento DM desde cliente cuando isDM=false (se emitirá de todas formas):',
+        event,
+      );
+    }
+
+    //   console.log(
+    //     '📡 Socket emit:',
+    //     event,
+    //     data,
+    //     'Socket connected:',
+    //     socket.current?.connected,
+    //   );
     if (!socket.current) {
       console.error('❌ Socket no existe');
       return;
     }
+    // console.log('📡 Socket emit:', event, { ...data, gameId, isDM });
     socket.current.emit(event, { ...data, gameId });
   };
 

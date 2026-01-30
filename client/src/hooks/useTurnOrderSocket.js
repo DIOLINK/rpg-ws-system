@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useGameSocket } from '../hooks/useGameSocket';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import useToastStore from '../context/toastStore.js';
 
 /**
  * Hook para sincronizar el orden de turnos en tiempo real usando sockets.
@@ -8,8 +8,8 @@ import { useGameSocket } from '../hooks/useGameSocket';
  * @param {string} gameId - ID de la partida
  * @returns {object} Estado y acciones para el sistema de turnos
  */
-export function useTurnOrderSocket(gameId) {
-  const { getSocket } = useGameSocket();
+// Ahora el hook acepta `getSocket` para reutilizar el socket ya inicializado
+export function useTurnOrderSocket(gameId, getSocket, emit) {
   const [turnOrder, setTurnOrder] = useState([]);
   const [currentTurnIndex, setCurrentTurnIndex] = useState(0);
   const [tiedGroups, setTiedGroups] = useState([]);
@@ -20,26 +20,57 @@ export function useTurnOrderSocket(gameId) {
   const [statChanges, setStatChanges] = useState(null);
   const [koAlert, setKoAlert] = useState(null);
   const [statusEffectsApplied, setStatusEffectsApplied] = useState(null);
+  const lastTurnOrderStr = useRef(null);
 
   // Escuchar eventos de actualización de turnos
   useEffect(() => {
-    const socket = getSocket();
+    const socket = getSocket ? getSocket() : null;
     if (!socket || !gameId) return;
 
-    // Solicitar estado actual al conectar
-    socket.emit('get-turn-order', { gameId });
+    // Solicitar estado actual al conectar (usar emit wrapper si está disponible)
+    if (emit) {
+      emit('get-turn-order', { gameId });
+    } else {
+      socket.emit('get-turn-order', { gameId });
+    }
 
     // Orden calculado inicialmente
     const handleCalculated = ({ turnOrder, currentTurnIndex, tiedGroups }) => {
+      try {
+        const newStr = JSON.stringify(turnOrder || []);
+        if (lastTurnOrderStr.current === newStr) {
+          // Evitar actualizaciones redundantes que pueden causar loops
+          setLoading(false);
+          return;
+        }
+        lastTurnOrderStr.current = newStr;
+      } catch (err) {
+        // ignore stringify errors
+      }
       setTurnOrder(turnOrder);
       setCurrentTurnIndex(currentTurnIndex);
       setTiedGroups(tiedGroups || []);
       setCombatStarted(true);
       setLoading(false);
+      if (turnOrder.length > 0) {
+        const current = turnOrder[currentTurnIndex];
+        useToastStore.getState().addToast({
+          message: `Inicio de combate. Turno de ${current?.name || 'desconocido'}`,
+          type: 'info',
+        });
+      }
     };
 
     // Orden actualizado (por resolución de empate, agregar/remover personaje, etc.)
     const handleUpdated = ({ turnOrder, currentTurnIndex, tiedGroups }) => {
+      try {
+        const newStr = JSON.stringify(turnOrder || []);
+        if (lastTurnOrderStr.current === newStr) {
+          setLoading(false);
+          return;
+        }
+        lastTurnOrderStr.current = newStr;
+      } catch (err) {}
       setTurnOrder(turnOrder);
       setCurrentTurnIndex(currentTurnIndex);
       setTiedGroups(tiedGroups || []);
@@ -55,6 +86,12 @@ export function useTurnOrderSocket(gameId) {
       characterKO,
     }) => {
       setCurrentTurnIndex(currentTurnIndex);
+      if (currentCharacter) {
+        useToastStore.getState().addToast({
+          message: `Turno de ${currentCharacter.name}`,
+          type: 'info',
+        });
+      }
 
       // Notificar efectos de estados aplicados
       if (statusEffects && statusEffects.appliedEffects?.length > 0) {
@@ -236,101 +273,152 @@ export function useTurnOrderSocket(gameId) {
 
   // DM: Calcular orden de turnos basado en dexterity
   const calculateTurnOrder = useCallback(() => {
-    const socket = getSocket();
-    if (!socket || !gameId) return;
+    // console.log(
+    //   '[useTurnOrderSocket] calculateTurnOrder called, gameId:',
+    //   gameId,
+    // );
+    if (!gameId) return;
     setLoading(true);
+    if (emit) {
+      emit('dm:calculate-turn-order', { gameId });
+      return;
+    }
+    const socket = getSocket ? getSocket() : null;
+    if (!socket) {
+      console.warn(
+        '[useTurnOrderSocket] Socket ausente, no se emitirá dm:calculate-turn-order',
+      );
+      setLoading(false);
+      return;
+    }
     socket.emit('dm:calculate-turn-order', { gameId });
-  }, [getSocket, gameId]);
+  }, [getSocket, emit, gameId]);
+
+  // DM: Terminar combate
+  const endCombat = useCallback(() => {
+    if (emit) return emit('dm:end-combat', { gameId });
+    const socket = getSocket ? getSocket() : null;
+    if (!socket || !gameId) return;
+    socket.emit('dm:end-combat', { gameId });
+  }, [getSocket, emit, gameId]);
 
   // DM: Resolver empate manualmente
   const resolveTie = useCallback(
     (reorderedCharacters) => {
+      if (emit) {
+        setLoading(true);
+        emit('dm:resolve-tie', { gameId, reorderedCharacters });
+        return;
+      }
       const socket = getSocket();
       if (!socket || !gameId) return;
       setLoading(true);
       socket.emit('dm:resolve-tie', { gameId, reorderedCharacters });
     },
-    [getSocket, gameId],
+    [getSocket, emit, gameId],
   );
 
   // DM: Actualizar el orden de turnos completo
   const updateTurnOrder = useCallback(
     (newOrder) => {
+      if (emit) {
+        setLoading(true);
+        emit('dm:update-turn-order', { gameId, turnOrder: newOrder });
+        return;
+      }
       const socket = getSocket();
       if (!socket || !gameId) return;
       setLoading(true);
       socket.emit('dm:update-turn-order', { gameId, turnOrder: newOrder });
     },
-    [getSocket, gameId],
+    [getSocket, emit, gameId],
   );
 
   // DM: Avanzar turno
   const nextTurn = useCallback(() => {
+    if (emit) return emit('dm:next-turn', { gameId });
     const socket = getSocket();
     if (!socket || !gameId) return;
     socket.emit('dm:next-turn', { gameId });
-  }, [getSocket, gameId]);
+  }, [getSocket, emit, gameId]);
 
   // DM: Forzar turno a un personaje específico
   const forceTurn = useCallback(
     (characterId) => {
+      if (emit) return emit('dm:force-turn', { gameId, characterId });
       const socket = getSocket();
       if (!socket || !gameId) return;
       socket.emit('dm:force-turn', { gameId, characterId });
     },
-    [getSocket, gameId],
+    [getSocket, emit, gameId],
   );
 
   // DM: Agregar personaje al orden de turnos
   const addToTurnOrder = useCallback(
     (characterId) => {
+      if (emit) {
+        setLoading(true);
+        emit('dm:add-to-turn-order', { gameId, characterId });
+        return;
+      }
       const socket = getSocket();
       if (!socket || !gameId) return;
       setLoading(true);
       socket.emit('dm:add-to-turn-order', { gameId, characterId });
     },
-    [getSocket, gameId],
+    [getSocket, emit, gameId],
   );
 
   // DM: Remover personaje del orden de turnos
   const removeFromTurnOrder = useCallback(
     (characterId) => {
+      if (emit) {
+        setLoading(true);
+        emit('dm:remove-from-turn-order', { gameId, characterId });
+        return;
+      }
       const socket = getSocket();
       if (!socket || !gameId) return;
       setLoading(true);
       socket.emit('dm:remove-from-turn-order', { gameId, characterId });
     },
-    [getSocket, gameId],
+    [getSocket, emit, gameId],
   );
 
   // Modificar HP (jugador o DM)
   const modifyHp = useCallback(
     (characterId, amount, reason) => {
+      if (emit)
+        return emit('modify-hp', { characterId, amount, gameId, reason });
       const socket = getSocket();
       if (!socket || !gameId) return;
       socket.emit('modify-hp', { characterId, amount, gameId, reason });
     },
-    [getSocket, gameId],
+    [getSocket, emit, gameId],
   );
 
   // Modificar Mana (jugador o DM)
   const modifyMana = useCallback(
     (characterId, amount, reason) => {
+      if (emit)
+        return emit('modify-mana', { characterId, amount, gameId, reason });
       const socket = getSocket();
       if (!socket || !gameId) return;
       socket.emit('modify-mana', { characterId, amount, gameId, reason });
     },
-    [getSocket, gameId],
+    [getSocket, emit, gameId],
   );
 
   // DM: Revivir personaje
   const reviveCharacter = useCallback(
     (characterId, hpAmount = 1) => {
+      if (emit)
+        return emit('dm:revive-character', { characterId, hpAmount, gameId });
       const socket = getSocket();
       if (!socket || !gameId) return;
       socket.emit('dm:revive-character', { characterId, hpAmount, gameId });
     },
-    [getSocket, gameId],
+    [getSocket, emit, gameId],
   );
 
   // Obtener el personaje con el turno actual
@@ -377,6 +465,7 @@ export function useTurnOrderSocket(gameId) {
     forceTurn,
     addToTurnOrder,
     removeFromTurnOrder,
+    endCombat,
     reviveCharacter,
     // Acciones HP/MP
     modifyHp,
