@@ -13,7 +13,7 @@ const NavBar = () => {
 
   return (
     <nav
-      className="navbar-test text-white py-4 fixed left-0 right-0 bottom-0 z-50 bg-gray-900"
+      className="navbar-test text-white py-2 fixed left-0 right-0 bottom-0 z-50 bg-gray-900 shadow-amber-100 shadow"
       style={{
         width: '100vw !important',
         maxWidth: '100vw !important',
@@ -24,7 +24,7 @@ const NavBar = () => {
       }}
     >
       <div
-        className="flex flex-row justify-center items-center border-t border-gray-700"
+        className="flex flex-row justify-center items-center "
         style={{
           margin: 0,
           padding: 0,
