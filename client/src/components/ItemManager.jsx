@@ -1157,7 +1157,7 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
   );
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4 sm:p-6">
+    <div className="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl">
       <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
         📦 Gestión de Items
       </h2>

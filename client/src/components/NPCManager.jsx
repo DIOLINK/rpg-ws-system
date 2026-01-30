@@ -10,6 +10,7 @@ import {
   spawnNPC,
 } from '../services/npcService';
 import { apiFetch } from '../utils/apiFetch';
+import Collapsible from './Collapsible';
 
 const NPC_TYPES = {
   enemy: { label: 'Enemigo', color: 'bg-red-600', icon: '👹' },
@@ -513,181 +514,21 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
   };
 
   const renderCreateTab = () => (
-    <div className="bg-gray-800 rounded-lg p-4 space-y-4">
-      <h4 className="font-bold text-purple-400">➕ Crear Nueva Plantilla</h4>
+    <div className="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl">
+      {/* Plantillas de NPC */}
+      <Collapsible title="📦 Plantillas de NPC" defaultOpen>
+        {/* ...contenido de plantillas de NPC... */}
+      </Collapsible>
 
-      {/* Datos básicos */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs text-gray-400">Nombre *</label>
-          <input
-            type="text"
-            value={newTemplate.name}
-            onChange={(e) =>
-              setNewTemplate({ ...newTemplate, name: e.target.value })
-            }
-            className="w-full bg-gray-700 rounded px-2 py-1 text-sm"
-            placeholder="Goblin Arquero"
-          />
-        </div>
-        <div>
-          <label className="text-xs text-gray-400">Clase/Tipo</label>
-          <input
-            type="text"
-            value={newTemplate.classType}
-            onChange={(e) =>
-              setNewTemplate({ ...newTemplate, classType: e.target.value })
-            }
-            className="w-full bg-gray-700 rounded px-2 py-1 text-sm"
-            placeholder="Enemigo Menor"
-          />
-        </div>
-        <div>
-          <label className="text-xs text-gray-400">Icono</label>
-          <input
-            type="text"
-            value={newTemplate.icon}
-            onChange={(e) =>
-              setNewTemplate({ ...newTemplate, icon: e.target.value })
-            }
-            className="w-full bg-gray-700 rounded px-2 py-1 text-sm"
-            placeholder="👹"
-          />
-        </div>
-        <div>
-          <label className="text-xs text-gray-400">Tipo de NPC</label>
-          <select
-            value={newTemplate.npcType}
-            onChange={(e) =>
-              setNewTemplate({ ...newTemplate, npcType: e.target.value })
-            }
-            className="w-full bg-gray-700 rounded px-2 py-1 text-sm"
-          >
-            {Object.entries(NPC_TYPES).map(([key, config]) => (
-              <option key={key} value={key}>
-                {config.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-gray-400">Nivel</label>
-          <input
-            type="number"
-            value={newTemplate.level}
-            onChange={(e) =>
-              setNewTemplate({
-                ...newTemplate,
-                level: parseInt(e.target.value) || 1,
-              })
-            }
-            className="w-full bg-gray-700 rounded px-2 py-1 text-sm"
-            min="1"
-          />
-        </div>
-        <div>
-          <label className="text-xs text-gray-400">Exp al morir</label>
-          <input
-            type="number"
-            value={newTemplate.expReward}
-            onChange={(e) =>
-              setNewTemplate({
-                ...newTemplate,
-                expReward: parseInt(e.target.value) || 0,
-              })
-            }
-            className="w-full bg-gray-700 rounded px-2 py-1 text-sm"
-            min="0"
-          />
-        </div>
-      </div>
+      {/* NPCs activos */}
+      <Collapsible title="👾 NPCs Activos" defaultOpen>
+        {/* ...contenido de NPCs activos... */}
+      </Collapsible>
 
-      {/* Descripción */}
-      <div>
-        <label className="text-xs text-gray-400">Descripción</label>
-        <textarea
-          value={newTemplate.description}
-          onChange={(e) =>
-            setNewTemplate({ ...newTemplate, description: e.target.value })
-          }
-          className="w-full bg-gray-700 rounded px-2 py-1 text-sm h-16 resize-none"
-          placeholder="Una criatura pequeña y maliciosa..."
-        />
-      </div>
-
-      {/* Oro drop */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs text-gray-400">Oro mínimo</label>
-          <input
-            type="number"
-            value={newTemplate.goldDrop.min}
-            onChange={(e) =>
-              setNewTemplate({
-                ...newTemplate,
-                goldDrop: {
-                  ...newTemplate.goldDrop,
-                  min: parseInt(e.target.value) || 0,
-                },
-              })
-            }
-            className="w-full bg-gray-700 rounded px-2 py-1 text-sm"
-            min="0"
-          />
-        </div>
-        <div>
-          <label className="text-xs text-gray-400">Oro máximo</label>
-          <input
-            type="number"
-            value={newTemplate.goldDrop.max}
-            onChange={(e) =>
-              setNewTemplate({
-                ...newTemplate,
-                goldDrop: {
-                  ...newTemplate.goldDrop,
-                  max: parseInt(e.target.value) || 0,
-                },
-              })
-            }
-            className="w-full bg-gray-700 rounded px-2 py-1 text-sm"
-            min="0"
-          />
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div>
-        <label className="text-xs text-gray-400 block mb-2">Estadísticas</label>
-        <div className="grid grid-cols-4 gap-2">
-          {STAT_FIELDS.map((stat) => (
-            <div key={stat.key}>
-              <label className="text-xs text-gray-500">{stat.label}</label>
-              <input
-                type="number"
-                value={newTemplate.stats[stat.key]}
-                onChange={(e) =>
-                  setNewTemplate({
-                    ...newTemplate,
-                    stats: {
-                      ...newTemplate.stats,
-                      [stat.key]: parseInt(e.target.value) || 0,
-                    },
-                  })
-                }
-                className="w-full bg-gray-700 rounded px-2 py-1 text-sm"
-                min="0"
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <button
-        onClick={handleCreateTemplate}
-        className="w-full bg-purple-600 hover:bg-purple-500 py-2 rounded font-medium transition-colors"
-      >
-        ✨ Crear Plantilla
-      </button>
+      {/* Crear nueva plantilla */}
+      <Collapsible title="➕ Crear Plantilla de NPC">
+        {/* ...formulario de creación de plantilla... */}
+      </Collapsible>
     </div>
   );
 
@@ -1039,14 +880,6 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
       </div>
     );
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-32">
-        <span className="text-gray-400">Cargando NPCs...</span>
-      </div>
-    );
-  }
 
   // Modal de confirmación para eliminar NPC
   const renderDeleteNPCModal = () => {

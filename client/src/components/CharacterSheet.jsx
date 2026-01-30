@@ -7,6 +7,7 @@ import { classAbilityService } from '../services/classAbilityService';
 import { itemService } from '../services/itemService';
 import AccordionList from './AccordionList';
 import CharacterStats from './CharacterStats';
+import Collapsible from './Collapsible';
 // Iconos por tipo de clase
 const CLASS_ICONS = {
   guerrero: '⚔️',
@@ -364,30 +365,8 @@ export const CharacterSheet = ({
   };
 
   return (
-    <div className="relative min-w-sm" style={{ perspective: '1000px' }}>
-      {/* Botón Flip - Esquina superior derecha */}
-      <button
-        onClick={handleFlip}
-        className="absolute top-2 right-2 z-10 w-10 h-10 bg-gray-700/90 hover:bg-purple-600 rounded-full font-medium transition-all duration-300 flex items-center justify-center shadow-lg hover:scale-110 hover:shadow-purple-500/30"
-        title={
-          isFlipped ? 'Ver stats y habilidades' : 'Ver descripción e inventario'
-        }
-      >
-        <span
-          className="text-lg transition-transform duration-500"
-          style={{ transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
-        >
-          {isFlipped ? '⚔️' : '📜'}
-        </span>
-      </button>
-
-      <div
-        className={`relative w-full transition-transform duration-500 ease-in-out`}
-        style={{
-          transformStyle: 'preserve-3d',
-          transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-        }}
-      >
+    <Collapsible title={`🧑 Ficha de ${character.name}`} defaultOpen>
+      <div className="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl">
         {/* FRENTE - Stats y Habilidades */}
         <div
           className="bg-gray-800 rounded-lg p-4 sm:p-6 shadow-xl hover:shadow-2xl transition-shadow"
@@ -1176,7 +1155,7 @@ export const CharacterSheet = ({
           </div>
         </div>
       )}
-    </div>
+    </Collapsible>
   );
 };
 
