@@ -9,6 +9,7 @@ import {
   killNPC,
   spawnNPC,
 } from '../services/npcService';
+import { apiFetch } from '../utils/apiFetch';
 
 const NPC_TYPES = {
   enemy: { label: 'Enemigo', color: 'bg-red-600', icon: '👹' },
@@ -38,6 +39,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
   const [activeTab, setActiveTab] = useState('spawn'); // 'spawn', 'active', 'create'
   const [showLootModal, setShowLootModal] = useState(false);
   const [lootData, setLootData] = useState(null);
+  const [npcToDelete, setNpcToDelete] = useState(null); // Para el modal de confirmación
   const addToast = useToastStore((state) => state.addToast);
 
   // Form para crear plantilla
@@ -76,17 +78,22 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
   const loadActiveNPCs = useCallback(async () => {
     if (!gameId) return;
     try {
-      const res = await fetch(`/api/npc/game/${gameId}`);
-      console.log('🚀 ~ NPCManager ~ res:', res.json());
-
-      let data;
+      const res = await apiFetch(`/api/npc/game/${gameId}`);
+      let data = null;
       try {
-        data = JSON.parse(res);
+        data = await res.json();
       } catch (e) {
-        console.error('Respuesta no es JSON válido:', res);
+        console.error('Respuesta no es JSON válido:', e, res);
         setActiveNPCs([]);
         return;
       }
+
+      if (!res.ok) {
+        console.error('Error cargando NPCs:', res.status, data);
+        setActiveNPCs([]);
+        return;
+      }
+
       setActiveNPCs(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error loading NPCs:', error);
@@ -140,9 +147,8 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
     }
   };
 
-  // Eliminar NPC
+  // Eliminar NPC (ahora solo ejecuta la acción, la confirmación es por modal)
   const handleDeleteNPC = async (npc) => {
-    if (!confirm(`¿Eliminar ${npc.name} permanentemente?`)) return;
     try {
       await deleteNPC(npc._id);
       setActiveNPCs(activeNPCs.filter((n) => n._id !== npc._id));
@@ -231,18 +237,60 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
   const handleGiveLoot = async (characterId) => {
     if (!lootData) return;
     try {
-      await giveLoot(
-        lootData.npc._id,
+      const groupItems = (items) => {
+        if (!Array.isArray(items)) return [];
+        const map = new Map();
+        for (const it of items) {
+          const key = it.itemRef ? it.itemRef : it.name;
+          const existing = map.get(key);
+          if (existing) {
+            existing.quantity = (existing.quantity || 0) + (it.quantity || 1);
+          } else {
+            map.set(key, { ...it, quantity: it.quantity || 1 });
+          }
+        }
+        return Array.from(map.values()).map((it) => ({
+          name: it.name,
+          itemRef: it.itemRef,
+          quantity: it.quantity,
+          icon: it.icon,
+          type: it.type,
+          rarity: it.rarity,
+          value: it.value,
+        }));
+      };
+
+      const itemsToSend = groupItems(lootData.loot?.items || []);
+
+      const payload = {
+        npcId: lootData.npc._id,
         characterId,
-        lootData.loot.items,
-        lootData.loot.gold,
+        items: itemsToSend,
+        gold: lootData.loot?.gold || 0,
+      };
+      console.log('[NPCManager] giveLoot payload:', payload);
+      const res = await giveLoot(
+        payload.npcId,
+        payload.characterId,
+        payload.items,
+        payload.gold,
       );
-      addToast({ message: 'Loot entregado', type: 'success' });
+      console.log('[NPCManager] giveLoot response:', res);
+      if (!res || !res.ok) {
+        const errMsg = res?.body?.message || `Status ${res?.status}`;
+        addToast({ message: `Error al dar loot: ${errMsg}`, type: 'error' });
+      } else {
+        addToast({ message: 'Loot entregado', type: 'success' });
+      }
       setShowLootModal(false);
       setLootData(null);
       if (onRefresh) onRefresh();
     } catch (error) {
-      addToast({ message: 'Error al dar loot', type: 'error' });
+      console.error('handleGiveLoot error:', error);
+      addToast({
+        message: `Error al dar loot: ${error.message || error}`,
+        type: 'error',
+      });
     }
   };
 
@@ -348,6 +396,8 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
   const renderActiveTab = () => {
     const aliveNPCs = activeNPCs.filter((n) => !n.isDead);
     const deadNPCs = activeNPCs.filter((n) => n.isDead);
+    console.log('[NPCManager] NPCs activos:', aliveNPCs);
+    console.log('[NPCManager] NPCs muertos:', deadNPCs);
 
     return (
       <div className="space-y-4">
@@ -411,10 +461,10 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
                       className="px-2 py-1 bg-red-600 hover:bg-red-500 rounded text-sm"
                       title="Matar (dropea loot)"
                     >
-                      ☠️ Matar
+                      ☠️
                     </button>
                     <button
-                      onClick={() => handleDeleteNPC(npc)}
+                      onClick={() => setNpcToDelete(npc)}
                       className="px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm"
                       title="Eliminar sin loot"
                     >
@@ -448,7 +498,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
                     </span>
                   </div>
                   <button
-                    onClick={() => handleDeleteNPC(npc)}
+                    onClick={() => setNpcToDelete(npc)}
                     className="px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs"
                   >
                     🗑️ Eliminar
@@ -909,6 +959,8 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
   const renderLootModal = () => {
     if (!showLootModal || !lootData) return null;
 
+    // Defensive: lootData.loot puede ser undefined/null
+    const loot = lootData.loot || { gold: 0, items: [] };
     const playerCharacters = characters?.filter((c) => !c.isNPC) || [];
 
     return (
@@ -919,27 +971,37 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
               💀 {lootData.npc.name} ha muerto
             </h3>
             <p className="text-sm text-gray-400">
-              Experiencia: {lootData.exp} | Oro: {lootData.loot.gold}
+              Experiencia: {lootData.exp} | Oro: {loot.gold}
             </p>
           </div>
 
           <div className="p-4 space-y-3">
-            {lootData.loot.items.length > 0 && (
+            {Array.isArray(loot.items) && loot.items.length > 0 && (
               <div>
                 <h4 className="text-xs text-gray-500 uppercase mb-2">
                   Items dropeados
                 </h4>
-                {lootData.loot.items.map((item, i) => (
-                  <div
-                    key={i}
-                    className="bg-gray-700 p-2 rounded text-sm mb-1 flex justify-between"
-                  >
-                    <span>
-                      {item.icon} {item.name}
-                    </span>
-                    <span className="text-gray-400">x{item.quantity}</span>
-                  </div>
-                ))}
+                {(() => {
+                  // Agrupar items iguales para mostrar cantidades consolidadas
+                  const grouped = (loot.items || []).reduce((acc, it) => {
+                    const key = it.itemRef || it.name;
+                    if (!acc[key]) acc[key] = { ...it, quantity: 0 };
+                    acc[key].quantity =
+                      (acc[key].quantity || 0) + (it.quantity || 1);
+                    return acc;
+                  }, {});
+                  return Object.values(grouped).map((item, i) => (
+                    <div
+                      key={i}
+                      className="bg-gray-700 p-2 rounded text-sm mb-1 flex justify-between"
+                    >
+                      <span>
+                        {item.icon} {item.name}
+                      </span>
+                      <span className="text-gray-400">x{item.quantity}</span>
+                    </div>
+                  ));
+                })()}
               </div>
             )}
 
@@ -986,6 +1048,41 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
     );
   }
 
+  // Modal de confirmación para eliminar NPC
+  const renderDeleteNPCModal = () => {
+    if (!npcToDelete) return null;
+    return (
+      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div className="bg-gray-800 rounded-lg max-w-sm w-full">
+          <div className="p-4 border-b border-gray-700">
+            <h3 className="font-bold text-lg text-red-400">Eliminar NPC</h3>
+            <p className="text-gray-300 text-sm mt-2">
+              ¿Eliminar <span className="font-bold">{npcToDelete.name}</span>{' '}
+              permanentemente?
+            </p>
+          </div>
+          <div className="p-4 flex gap-2 border-t border-gray-700">
+            <button
+              onClick={() => setNpcToDelete(null)}
+              className="flex-1 bg-gray-600 hover:bg-gray-500 py-2 rounded font-medium"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={async () => {
+                await handleDeleteNPC(npcToDelete);
+                setNpcToDelete(null);
+              }}
+              className="flex-1 bg-red-600 hover:bg-red-500 py-2 rounded font-medium text-white"
+            >
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
       {renderTabs()}
@@ -997,6 +1094,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
       {renderTemplateModal()}
       {renderNPCModal()}
       {renderLootModal()}
+      {renderDeleteNPCModal()}
     </div>
   );
 }

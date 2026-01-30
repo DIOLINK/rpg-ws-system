@@ -253,7 +253,11 @@ export const CharacterSheet = ({
       });
       return;
     }
-    if (!item.value || item.value <= 0) {
+    // Calcular valor por unidad por defecto si falta
+    const unitValue =
+      item.value && item.value > 0 ? item.value : item.type === 'quest' ? 0 : 1;
+
+    if (unitValue <= 0) {
       addToast({
         type: 'warning',
         message: 'Este item no tiene valor de venta',
@@ -261,8 +265,8 @@ export const CharacterSheet = ({
       return;
     }
 
-    // Abrir modal de venta
-    setSellModal({ item, quantity: 1 });
+    // Abrir modal de venta (guardar unitValue para cálculos)
+    setSellModal({ item, quantity: 1, unitValue });
   };
 
   // Confirmar venta desde el modal
@@ -288,9 +292,37 @@ export const CharacterSheet = ({
     }
   };
 
+  // Debug: imprimir sellModal cuando se abre (solo en desarrollo)
+  useEffect(() => {
+    try {
+      if (process.env.NODE_ENV !== 'production' && sellModal) {
+        // eslint-disable-next-line no-console
+        console.log('CharacterSheet: sellModal opened', sellModal);
+      }
+    } catch (e) {
+      /* ignore */
+    }
+  }, [sellModal]);
+
   // Contar items equipados
   const equippedCount =
     character.inventory?.filter((item) => item.equipped).length || 0;
+
+  // Debug: imprimir inventario para verificar renderizado (solo en desarrollo)
+  useEffect(() => {
+    try {
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.log(
+          'CharacterSheet: inventory for',
+          character._id,
+          character.inventory,
+        );
+      }
+    } catch (e) {
+      /* ignore */
+    }
+  }, [character._id, character.inventory]);
 
   // Calcular bonuses de stats por items equipados
   const equipmentBonuses = useMemo(() => {
@@ -953,11 +985,21 @@ export const CharacterSheet = ({
                                 📍 {item.equipSlot}
                               </span>
                             )}
-                            {item.value > 0 && (
-                              <span className="text-xs text-yellow-400">
-                                💰 {item.value}
-                              </span>
-                            )}
+                            {(() => {
+                              const unitValue =
+                                item.value && item.value > 0
+                                  ? item.value
+                                  : item.type === 'quest'
+                                    ? 0
+                                    : 1;
+                              return (
+                                unitValue > 0 && (
+                                  <span className="text-xs text-yellow-400">
+                                    💰 {unitValue}
+                                  </span>
+                                )
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -997,19 +1039,29 @@ export const CharacterSheet = ({
                                   ⚔️
                                 </button>
                               ))}
-                            {/* Vender */}
-                            {item.value > 0 &&
-                              item.type !== 'quest' &&
-                              !item.equipped && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSellItem(item)}
-                                  className="text-xs bg-yellow-600 hover:bg-yellow-500 text-white px-2 py-1 rounded"
-                                  title={`Vender por ${item.value} oro`}
-                                >
-                                  💰
-                                </button>
-                              )}
+                            {/* Vender (usar valor por defecto si falta) */}
+                            {(() => {
+                              const unitValue =
+                                item.value && item.value > 0
+                                  ? item.value
+                                  : item.type === 'quest'
+                                    ? 0
+                                    : 1;
+                              return (
+                                unitValue > 0 &&
+                                item.type !== 'quest' &&
+                                !item.equipped && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSellItem(item)}
+                                    className="text-xs bg-yellow-600 hover:bg-yellow-500 text-white px-2 py-1 rounded"
+                                    title={`Vender por ${unitValue} oro`}
+                                  >
+                                    💰
+                                  </button>
+                                )
+                              );
+                            })()}
                           </div>
                         )}
                       </div>
@@ -1095,7 +1147,10 @@ export const CharacterSheet = ({
 
             <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-lg p-3 mb-4">
               <p className="text-center text-yellow-400 font-bold text-lg">
-                Total: {sellModal.item.value * sellModal.quantity} oro
+                Total:{' '}
+                {(sellModal.unitValue || sellModal.item.value || 0) *
+                  sellModal.quantity}{' '}
+                oro
               </p>
               <p className="text-center text-xs text-gray-400 mt-1">
                 El DM debe aprobar la venta

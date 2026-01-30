@@ -74,5 +74,11 @@ export const giveLoot = async (npcId, characterId, items, gold) => {
     method: 'POST',
     body: JSON.stringify({ characterId, items, gold }),
   });
-  return res.json();
+  let body = null;
+  try {
+    body = await res.json();
+  } catch (e) {
+    console.error('giveLoot: response not JSON', e);
+  }
+  return { status: res.status, ok: res.ok, body };
 };

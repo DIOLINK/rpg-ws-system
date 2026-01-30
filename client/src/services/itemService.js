@@ -17,8 +17,11 @@ export const itemService = {
   // ============ CRUD DE ITEMS ============
 
   // Obtener todos los items
-  async getAll() {
-    const response = await apiFetch(`${BASE_URL}/api/items`);
+  async getAll(q) {
+    const url = q
+      ? `${BASE_URL}/api/items?q=${encodeURIComponent(q)}`
+      : `${BASE_URL}/api/items`;
+    const response = await apiFetch(url);
     return handleResponse(response);
   },
 
