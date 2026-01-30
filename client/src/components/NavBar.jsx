@@ -12,8 +12,24 @@ const NavBar = () => {
   }
 
   return (
-    <nav className="navbar-test text-white p-4 fixed inset-x-0 bottom-0 z-50 bg-gray-900">
-      <div className="flex flex-row justify-center items-center border-t border-gray-700">
+    <nav
+      className="navbar-test text-white py-4 fixed left-0 right-0 bottom-0 z-50 bg-gray-900"
+      style={{
+        width: '100vw !important',
+        maxWidth: '100vw !important',
+        paddingLeft: 0,
+        paddingRight: 0,
+        marginLeft: 0,
+        marginRight: 0,
+      }}
+    >
+      <div
+        className="flex flex-row justify-center items-center border-t border-gray-700"
+        style={{
+          margin: 0,
+          padding: 0,
+        }}
+      >
         <div className="flex flex-col items-center basis-1/3 px-4 py-2">
           <Link
             to="/lobby"

@@ -251,26 +251,17 @@ export const GamePage = () => {
 
       {/* Status Bar - Sticky en mobile */}
       <div className="sticky top-0 z-10 bg-gray-800/95 backdrop-blur-sm rounded-lg p-2 sm:p-3 mb-3 sm:mb-4 shadow-lg">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-3 h-3 rounded-full ${
-                connected ? 'bg-green-500' : 'bg-red-500'
-              } animate-pulse`}
-            />
-            <span className="text-xs sm:text-sm font-medium">
-              {connected ? 'Conectado' : 'Desconectado'}
-            </span>
-            <span className="text-xs text-gray-400 hidden sm:inline">
-              • Partida: {gameId.slice(MAX_GAMES_DISPLAYED)}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400 sm:hidden">
-              ID: {gameId.slice(MAX_GAMES_DISPLAYED)}
-            </span>
-            <CopyButton id={gameId.slice(MAX_GAMES_DISPLAYED)} />
-          </div>
+        <div className="flex flex-row items-center justify-center gap-3 w-full">
+          <div
+            className={`w-3 h-3 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}
+          />
+          <span className="text-xs sm:text-sm font-medium">
+            {connected ? 'Conectado' : 'Desconectado'}
+          </span>
+          <span className="text-xs text-gray-400">
+            {gameId && `ID: ${gameId.slice(MAX_GAMES_DISPLAYED)}`}
+          </span>
+          <CopyButton id={gameId.slice(MAX_GAMES_DISPLAYED)} />
         </div>
       </div>
 
@@ -284,7 +275,7 @@ export const GamePage = () => {
         onClickCharacter={isDM ? (char) => forceTurn(char.id) : undefined}
       />
 
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto pb-24">
         {/* Layout principal */}
         <div
           className={`grid grid-cols-1 ${
