@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 /**
  * Panel de control de turnos para el DM.
@@ -26,6 +26,22 @@ export function DMTurnOrderPanel({
   const [selectedForTie, setSelectedForTie] = useState({});
   const [showAddCharacter, setShowAddCharacter] = useState(false);
   const [reviveHp, setReviveHp] = useState({});
+
+  // Inicializar selectedForTie cuando cambian tiedGroups
+  useEffect(() => {
+    if (tiedGroups.length > 0) {
+      const newSelected = {};
+      tiedGroups.forEach((group, groupIndex) => {
+        newSelected[groupIndex] = {};
+        group.characters.forEach((char, idx) => {
+          newSelected[groupIndex][char.characterId] = idx;
+        });
+      });
+      setSelectedForTie(newSelected);
+    } else {
+      setSelectedForTie({});
+    }
+  }, [tiedGroups.length]);
 
   // Personajes que no están en el orden de turnos
   const charactersNotInOrder = useMemo(() => {
@@ -56,10 +72,6 @@ export function DMTurnOrderPanel({
       characterId: char.characterId,
       newPosition: positions[char.characterId?.toString()] ?? char.position,
     }));
-    console.log(
-      '[DMTurnOrderPanel] apply resolve tie payload:',
-      reorderedCharacters,
-    );
     if (!isDM) {
       console.error(
         'Intento de aplicar orden de empate desde cliente sin permisos DM',
@@ -277,74 +289,83 @@ export function DMTurnOrderPanel({
       )}
 
       {/* Grupos empatados */}
-      {tiedGroups.length > 0 && (
-        <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-500/30 rounded-lg">
-          <h4 className="text-sm font-semibold text-yellow-400 mb-2">
-            ⚠️ Empates Detectados
-          </h4>
-          <p className="text-xs text-gray-400 mb-3">
-            Los siguientes personajes tienen la misma iniciativa. Puedes
-            reordenarlos manualmente.
-          </p>
-          {tiedGroups.map((group, groupIdx) => (
-            <div
-              key={`tie-${group.initiative}`}
-              className="mb-3 p-2 bg-gray-800/50 rounded-lg"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs text-yellow-400">
-                  Iniciativa {group.initiative}:
-                </span>
-              </div>
-              <div className="space-y-1">
-                {group.characters.map((char, charIdx) => (
-                  <div
-                    key={char.characterId}
-                    className="flex items-center justify-between"
-                  >
-                    <span className="text-sm">{char.name}</span>
-                    <select
-                      value={
-                        selectedForTie[groupIdx]?.[
-                          char.characterId?.toString()
-                        ] ?? char.position
-                      }
-                      onChange={(e) =>
-                        handleTiePositionChange(
-                          groupIdx,
-                          char.characterId?.toString(),
-                          Number.parseInt(e.target.value),
-                        )
-                      }
-                      className="px-2 py-1 bg-gray-700 rounded text-xs"
-                      disabled={
-                        currentCharacter?.characterId?.toString() ===
-                        char.characterId?.toString()
-                      }
-                    >
-                      {group.characters.map((c, posIdx) => (
-                        <option
-                          key={`pos-${c.characterId}-${posIdx}`}
-                          value={group.characters[0].position + posIdx}
-                        >
-                          Posición {group.characters[0].position + posIdx + 1}
-                        </option>
-                      ))}
-                    </select>
+      {combatStarted &&
+        turnOrder.length > 0 &&
+        (() => {
+          const realTies = tiedGroups.filter(
+            (g) => Array.isArray(g.characters) && g.characters.length > 1,
+          );
+          if (realTies.length === 0) return null;
+          return (
+            <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-500/30 rounded-lg">
+              <h4 className="text-sm font-semibold text-yellow-400 mb-2">
+                ⚠️ Empates Detectados
+              </h4>
+              <p className="text-xs text-gray-400 mb-3">
+                Los siguientes personajes tienen la misma iniciativa. Puedes
+                reordenarlos manualmente.
+              </p>
+              {realTies.map((group, groupIdx) => (
+                <div
+                  key={`tie-${group.initiative}`}
+                  className="mb-3 p-2 bg-gray-800/50 rounded-lg"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs text-yellow-400">
+                      Iniciativa {group.initiative}:
+                    </span>
                   </div>
-                ))}
-              </div>
-              <button
-                onClick={() => handleResolveTie(groupIdx, group)}
-                disabled={loading}
-                className="mt-2 w-full py-1 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 rounded text-xs font-medium transition-colors"
-              >
-                ✅ Aplicar Orden
-              </button>
+                  <div className="space-y-1">
+                    {group.characters.map((char, charIdx) => (
+                      <div
+                        key={char.characterId}
+                        className="flex items-center justify-between"
+                      >
+                        <span className="text-sm">{char.name}</span>
+                        <select
+                          value={
+                            selectedForTie[groupIdx]?.[
+                              char.characterId?.toString()
+                            ] ?? char.position
+                          }
+                          onChange={(e) =>
+                            handleTiePositionChange(
+                              groupIdx,
+                              char.characterId?.toString(),
+                              Number.parseInt(e.target.value),
+                            )
+                          }
+                          className="px-2 py-1 bg-gray-700 rounded text-xs"
+                          disabled={
+                            currentCharacter?.characterId?.toString() ===
+                            char.characterId?.toString()
+                          }
+                        >
+                          {group.characters.map((c, posIdx) => (
+                            <option
+                              key={`pos-${c.characterId}-${posIdx}`}
+                              value={group.characters[0].position + posIdx}
+                            >
+                              Posición{' '}
+                              {group.characters[0].position + posIdx + 1}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => handleResolveTie(groupIdx, group)}
+                    disabled={loading}
+                    className="mt-2 w-full py-1 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 rounded text-xs font-medium transition-colors"
+                  >
+                    ✅ Aplicar Orden
+                  </button>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })()}
 
       {/* Agregar personaje al combate */}
       {combatStarted && (

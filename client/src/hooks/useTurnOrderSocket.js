@@ -86,6 +86,7 @@ export function useTurnOrderSocket(gameId, getSocket, emit) {
       characterKO,
     }) => {
       setCurrentTurnIndex(currentTurnIndex);
+      setTiedGroups([]); // Limpiar empates al avanzar turno
       if (currentCharacter) {
         useToastStore.getState().addToast({
           message: `Turno de ${currentCharacter.name}`,
@@ -273,12 +274,13 @@ export function useTurnOrderSocket(gameId, getSocket, emit) {
 
   // DM: Calcular orden de turnos basado en dexterity
   const calculateTurnOrder = useCallback(() => {
-    // console.log(
-    //   '[useTurnOrderSocket] calculateTurnOrder called, gameId:',
-    //   gameId,
-    // );
+    console.log(
+      '[useTurnOrderSocket] calculateTurnOrder called, gameId:',
+      gameId,
+    );
     if (!gameId) return;
     setLoading(true);
+    setTiedGroups([]); // Reset tiedGroups when starting calculation
     if (emit) {
       emit('dm:calculate-turn-order', { gameId });
       return;
@@ -296,6 +298,7 @@ export function useTurnOrderSocket(gameId, getSocket, emit) {
 
   // DM: Terminar combate
   const endCombat = useCallback(() => {
+    setTiedGroups([]); // Limpiar empates al terminar combate
     if (emit) return emit('dm:end-combat', { gameId });
     const socket = getSocket ? getSocket() : null;
     if (!socket || !gameId) return;
