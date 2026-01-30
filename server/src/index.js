@@ -43,7 +43,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/characters', characterRoutes);
 app.use('/api/class-abilities', classAbilityRoutes);
-app.use('/api/npc', npcRoutes);
+app.use('/api/npc', npcRoutes(io));
 
 // WebSockets
 setupGameSockets(io);

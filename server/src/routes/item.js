@@ -69,9 +69,26 @@ export const createItemRoutes = (io) => {
   // Obtener todos los items (del sistema + custom del usuario)
   router.get('/', authenticateUser, async (req, res) => {
     try {
-      const items = await Item.find({
+      const { q } = req.query;
+
+      // Base filter: system items or created by user
+      const baseFilter = {
         $or: [{ isCustom: false }, { createdBy: req.user._id }],
-      }).sort({ type: 1, rarity: 1, name: 1 });
+      };
+
+      // If q provided, perform case-insensitive search on name (escape regex)
+      let filter = baseFilter;
+      if (q && q.trim().length > 0) {
+        const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escapeRegex(q.trim()), 'i');
+        filter = { $and: [baseFilter, { name: { $regex: regex } }] };
+      }
+
+      const items = await Item.find(filter).sort({
+        type: 1,
+        rarity: 1,
+        name: 1,
+      });
 
       res.json(items);
     } catch (error) {
@@ -670,9 +687,18 @@ export const createItemRoutes = (io) => {
         }
 
         const sellQuantity = Math.min(quantity, item.quantity);
-        const sellValue = (item.value || 0) * sellQuantity;
 
-        if (sellValue <= 0) {
+        // Fallback: si el item no tiene `value`, considerarlo vendible
+        // con valor 1 por unidad salvo que sea de tipo 'quest'.
+        const unitValue =
+          item.value && item.value > 0
+            ? item.value
+            : item.type === 'quest'
+              ? 0
+              : 1;
+        const sellValue = unitValue * sellQuantity;
+
+        if (unitValue <= 0 || sellValue <= 0) {
           return res
             .status(400)
             .json({ error: 'Este item no tiene valor de venta' });
@@ -695,7 +721,7 @@ export const createItemRoutes = (io) => {
           itemIcon: item.icon || '📦',
           quantity: sellQuantity,
           totalValue: sellValue,
-          unitValue: item.value || 0,
+          unitValue: unitValue,
           timestamp: new Date(),
         };
 
