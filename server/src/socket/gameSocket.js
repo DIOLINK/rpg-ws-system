@@ -3,6 +3,7 @@ import { Character } from '../models/Character.js';
 import { Game } from '../models/Game.js';
 import { User } from '../models/User.js';
 import { TurnOrchestrator } from '../utils/TurnOrchestrator.js';
+import { setupItemSocket } from './modules/itemSocket.js';
 
 // Función para calcular iniciativa basada en dexterity
 const calculateInitiative = async (characters) => {
@@ -117,6 +118,8 @@ const checkAndApplyKO = async (character) => {
 
 export const setupGameSockets = (io) => {
   io.on('connection', (socket) => {
+    // Modular: Handlers de items
+    setupItemSocket(io, socket);
     console.log('🎮 Usuario conectado:', socket.id);
 
     // Helper para obtener el usuario actual del socket
