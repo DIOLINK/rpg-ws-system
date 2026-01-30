@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import useToastStore from '../context/toastStore';
 import {
   createNPCTemplate,
@@ -32,6 +33,7 @@ const STAT_FIELDS = [
 ];
 
 export default function NPCManager({ gameId, characters, onRefresh, socket }) {
+  const { isDM } = useAuth();
   const [templates, setTemplates] = useState([]);
   const [activeNPCs, setActiveNPCs] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -412,11 +414,16 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
           ) : (
             <div className="space-y-2">
               {aliveNPCs.map((npc) => (
-                <div
+                <Collapsible
                   key={npc._id}
-                  className="bg-gray-700 rounded p-3 flex items-center justify-between"
+                  title={
+                    <span>
+                      {npc.npcIcon || '👹'} {npc.name}
+                    </span>
+                  }
+                  defaultOpen={false}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 mb-2">
                     <span className="text-3xl">{npc.npcIcon || '👹'}</span>
                     <div>
                       <div className="flex items-center gap-2">
@@ -472,7 +479,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
                       🗑️
                     </button>
                   </div>
-                </div>
+                </Collapsible>
               ))}
             </div>
           )}
@@ -486,11 +493,16 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
             </h4>
             <div className="space-y-2">
               {deadNPCs.map((npc) => (
-                <div
+                <Collapsible
                   key={npc._id}
-                  className="bg-gray-700/50 rounded p-2 flex items-center justify-between opacity-60"
+                  title={
+                    <span className="grayscale">
+                      {npc.npcIcon || '👹'} {npc.name}
+                    </span>
+                  }
+                  defaultOpen={false}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 mb-2 opacity-60">
                     <span className="text-xl grayscale">
                       {npc.npcIcon || '👹'}
                     </span>
@@ -504,7 +516,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
                   >
                     🗑️ Eliminar
                   </button>
-                </div>
+                </Collapsible>
               ))}
             </div>
           </div>
@@ -920,9 +932,31 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
     <div className="space-y-4">
       {renderTabs()}
 
-      {activeTab === 'spawn' && renderSpawnTab()}
-      {activeTab === 'active' && renderActiveTab()}
-      {activeTab === 'create' && renderCreateTab()}
+      {isDM ? (
+        <>
+          {activeTab === 'spawn' && (
+            <Collapsible title="👹 Invocar NPCs" defaultOpen>
+              {renderSpawnTab()}
+            </Collapsible>
+          )}
+          {activeTab === 'active' && (
+            <Collapsible title="⚔️ NPCs Activos" defaultOpen>
+              {renderActiveTab()}
+            </Collapsible>
+          )}
+          {activeTab === 'create' && (
+            <Collapsible title="➕ Crear Plantilla de NPC" defaultOpen>
+              {renderCreateTab()}
+            </Collapsible>
+          )}
+        </>
+      ) : (
+        <>
+          {activeTab === 'spawn' && renderSpawnTab()}
+          {activeTab === 'active' && renderActiveTab()}
+          {activeTab === 'create' && renderCreateTab()}
+        </>
+      )}
 
       {renderTemplateModal()}
       {renderNPCModal()}

@@ -8,8 +8,11 @@ import {
   ITEM_TYPES,
   itemService,
 } from '../services/itemService';
+import Collapsible from './Collapsible';
+import { useAuth } from '../context/AuthContext';
 
 const ItemManager = ({ characters, gameId, onItemAssigned }) => {
+  const { isDM } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('catalog'); // 'catalog', 'create', 'assign', 'shop', 'gold'
@@ -1180,11 +1183,43 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
         <div className="text-center py-8 text-gray-400">Cargando items...</div>
       ) : (
         <>
-          {activeTab === 'catalog' && renderCatalog()}
-          {activeTab === 'create' && renderCreateForm()}
-          {activeTab === 'assign' && renderAssign()}
-          {activeTab === 'shop' && renderShop()}
-          {activeTab === 'gold' && renderGold()}
+          {isDM ? (
+            <>
+              {activeTab === 'catalog' && (
+                <Collapsible title="📦 Catálogo de Items" defaultOpen>
+                  {renderCatalog()}
+                </Collapsible>
+              )}
+              {activeTab === 'create' && (
+                <Collapsible title="➕ Crear Item" defaultOpen>
+                  {renderCreateForm()}
+                </Collapsible>
+              )}
+              {activeTab === 'assign' && (
+                <Collapsible title="🎁 Asignar Items" defaultOpen>
+                  {renderAssign()}
+                </Collapsible>
+              )}
+              {activeTab === 'shop' && (
+                <Collapsible title="🏪 Vender Items" defaultOpen>
+                  {renderShop()}
+                </Collapsible>
+              )}
+              {activeTab === 'gold' && (
+                <Collapsible title="💰 Gestión de Oro" defaultOpen>
+                  {renderGold()}
+                </Collapsible>
+              )}
+            </>
+          ) : (
+            <>
+              {activeTab === 'catalog' && renderCatalog()}
+              {activeTab === 'create' && renderCreateForm()}
+              {activeTab === 'assign' && renderAssign()}
+              {activeTab === 'shop' && renderShop()}
+              {activeTab === 'gold' && renderGold()}
+            </>
+          )}
         </>
       )}
     </div>
