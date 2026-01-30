@@ -267,45 +267,16 @@ export const setupGameSockets = (io) => {
           return;
         }
 
-        // Verificar que ninguno de los personajes a reordenar tenga el turno actual
-        const currentTurnCharId =
-          game.turnOrder[game.currentTurnIndex]?.characterId?.toString();
-        const reorderingCurrentTurn = reorderedCharacters.some(
-          (char) => char.characterId.toString() === currentTurnCharId,
+        // Resolver el empate usando TurnOrchestrator
+        game.turnOrder = TurnOrchestrator.resolveTie(
+          game.turnOrder,
+          reorderedCharacters,
         );
-
-        if (reorderingCurrentTurn) {
-          socket.emit('error', {
-            message:
-              'No puedes cambiar el orden del personaje que tiene el turno actual',
-          });
-          return;
-        }
-
-        // Actualizar las posiciones de los personajes reordenados
-        for (const reordered of reorderedCharacters) {
-          const index = game.turnOrder.findIndex(
-            (t) =>
-              t.characterId.toString() === reordered.characterId.toString(),
-          );
-          if (index !== -1) {
-            game.turnOrder[index].position = reordered.newPosition;
-          }
-        }
-
-        // Reordenar el array según las nuevas posiciones
-        game.turnOrder.sort((a, b) => a.position - b.position);
-
-        // Reasignar posiciones secuenciales
-        game.turnOrder = game.turnOrder.map((entry, index) => ({
-          ...(entry.toObject ? entry.toObject() : entry),
-          position: index,
-        }));
 
         await game.save();
 
-        // Encontrar empates restantes
-        const tiedGroups = findTiedGroups(game.turnOrder);
+        // Después de resolver manualmente, no hay empates pendientes
+        const tiedGroups = [];
 
         io.to(`game:${gameId}`).emit('turn-order-updated', {
           turnOrder: game.turnOrder,

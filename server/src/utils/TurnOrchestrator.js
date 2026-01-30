@@ -1,29 +1,19 @@
-import { Item } from '../models/Item.js';
-
 export class TurnOrchestrator {
   // Calcular iniciativa: PJs incluyen modifiers de items equipados, NPCs solo base
   static async calculateInitiative(characters) {
     const enrichedCharacters = await Promise.all(
       characters.map(async (char) => {
         let totalDexterity = char.stats?.dexterity || 1;
-        if (!char.isNPC) {
-          // Para PJs, sumar modifiers de items equipados
-          const equippedItemIds = Object.values(char.equipment || {}).filter(
-            (id) => id,
+        // Sumar modifiers de items equipados para todos los personajes (PJs y NPCs)
+        const equippedInventoryItems = char.inventory.filter(
+          (inv) => inv.equipped,
+        );
+        if (equippedInventoryItems.length > 0) {
+          const dexterityBonus = equippedInventoryItems.reduce(
+            (sum, inv) => sum + (inv.statModifiers?.dexterity || 0),
+            0,
           );
-          if (equippedItemIds.length > 0) {
-            // equippedItemIds son _ids de inventory, no de Item
-            const equippedInventoryItems = char.inventory.filter((inv) =>
-              equippedItemIds.includes(inv._id),
-            );
-            const itemRefs = equippedInventoryItems.map((inv) => inv.itemRef);
-            const items = await Item.find({ _id: { $in: itemRefs } });
-            const dexterityBonus = items.reduce(
-              (sum, item) => sum + (item.statModifiers?.dexterity || 0),
-              0,
-            );
-            totalDexterity += dexterityBonus;
-          }
+          totalDexterity += dexterityBonus;
         }
         return {
           characterId: char._id,
@@ -73,12 +63,35 @@ export class TurnOrchestrator {
 
   // Resolver tie (reordenar)
   static resolveTie(turnOrder, reorderedCharacters) {
-    // Lógica para aplicar reorderedCharacters al turnOrder
-    // Asumir reorderedCharacters es array de {characterId, newPosition}
-    // Reordenar turnOrder basado en eso
-    // Retornar nuevo turnOrder
-    // (Implementar según lógica existente en dm:resolve-tie)
-    return turnOrder; // Placeholder
+    // reorderedCharacters es un objeto { characterId: newPosition }
+    // Encontrar el grupo empatado (asumir que hay uno, o el primero)
+    const tiedGroups = this.findTiedGroups(turnOrder);
+    if (tiedGroups.length === 0) return turnOrder;
+
+    const group = tiedGroups[0]; // Asumir el primero
+    const sortedGroup = group.characters.sort((a, b) => {
+      const posA = reorderedCharacters[a.characterId] ?? 999;
+      const posB = reorderedCharacters[b.characterId] ?? 999;
+      return posA - posB;
+    });
+
+    // Reemplazar en turnOrder
+    const startIndex = turnOrder.findIndex(
+      (e) => e.characterId === group.characters[0].characterId,
+    );
+    for (let i = 0; i < sortedGroup.length; i++) {
+      turnOrder[startIndex + i] = {
+        ...sortedGroup[i],
+        position: startIndex + i,
+      };
+    }
+
+    // Actualizar posiciones para el resto
+    for (let i = startIndex + sortedGroup.length; i < turnOrder.length; i++) {
+      turnOrder[i].position = i;
+    }
+
+    return turnOrder;
   }
 
   // Next turn
