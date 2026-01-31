@@ -26,7 +26,7 @@ router.post(
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
-  }
+  },
 );
 
 // Enviar personaje a validación (jugador)
@@ -63,7 +63,7 @@ router.get('/pending', authenticateUser, async (req, res) => {
           ...char.toObject(),
           playerName: player?.username || player?.email,
         };
-      })
+      }),
     );
     res.json(withPlayer);
   } catch (err) {
@@ -101,8 +101,42 @@ router.get('/', authenticateUser, async (req, res) => {
     const userId = req.user._id;
     // Preparado para paginación futura
     // const { page = 1, limit = 10 } = req.query;
-    const characters = await Character.find({ playerId: userId });
-    res.json(characters);
+    // Poblar itemRef en inventario
+    const characters = await Character.find({ playerId: userId }).lean();
+    // Para cada personaje, poblar los datos de itemRef en el inventario
+    const Item = (await import('../models/Item.js')).Item;
+    const populatedCharacters = await Promise.all(
+      characters.map(async (char) => {
+        if (!char.inventory || char.inventory.length === 0) return char;
+        // Buscar todos los itemRefs únicos
+        const itemRefs = char.inventory
+          .map((item) => item.itemRef)
+          .filter((ref) => !!ref);
+        let itemDataMap = {};
+        if (itemRefs.length > 0) {
+          const items = await Item.find({ _id: { $in: itemRefs } }).lean();
+          itemDataMap = items.reduce((acc, item) => {
+            acc[item._id.toString()] = item;
+            return acc;
+          }, {});
+        }
+        // Mezclar datos del item base en cada item del inventario
+        char.inventory = char.inventory.map((item) => {
+          if (item.itemRef && itemDataMap[item.itemRef.toString()]) {
+            const base = itemDataMap[item.itemRef.toString()];
+            // Mezclar manualmente useEffect si existe en el item base
+            return {
+              ...base,
+              ...item,
+              useEffect: base.useEffect || item.useEffect || null,
+            };
+          }
+          return item;
+        });
+        return char;
+      }),
+    );
+    res.json(populatedCharacters);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
