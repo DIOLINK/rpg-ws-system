@@ -2,17 +2,19 @@ import PropTypes from 'prop-types';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import useToastStore from '../context/toastStore';
+import { useGameSocket } from '../hooks/useGameSocket';
 import { MAX_GAMES_DISPLAYED } from '../pages/GameLobby';
 import { classAbilityService } from '../services/classAbilityService';
 import { itemService } from '../services/itemService';
 import AccordionList from './AccordionList';
 import CharacterStats from './CharacterStats';
 import Collapsible from './Collapsible';
+import InventoryList from './InventoryList';
 // Iconos por tipo de clase
 const CLASS_ICONS = {
   guerrero: '⚔️',
   mago: '🪄',
-  pícaro: '🗡️',
+  ladrón: '🗡️',
   clérigo: '⛑️',
   arquero: '🏹',
   paladín: '🛡️',
@@ -30,8 +32,9 @@ export const CharacterSheet = ({
   gameId,
 }) => {
   const { isDM } = useAuth();
+  // Obtener socket para emitir eventos
+  const { getSocket } = useGameSocket(gameId);
   const addToast = useToastStore((state) => state.addToast);
-  const removeToast = useToastStore((state) => state.removeToast);
   const [editing, setEditing] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
   const [classAbilities, setClassAbilities] = useState([]);
@@ -418,7 +421,7 @@ export const CharacterSheet = ({
                       <option value="">👤</option>
                       <option value="guerrero">⚔️ Guerrero</option>
                       <option value="mago">🪄 Mago</option>
-                      <option value="pícaro">🗡️ Pícaro</option>
+                      <option value="ladrón">🗡️ Ladrón</option>
                       <option value="clérigo">⛑️ Clérigo</option>
                       <option value="arquero">🏹 Arquero</option>
                       <option value="paladín">🛡️ Paladín</option>
@@ -905,193 +908,26 @@ export const CharacterSheet = ({
 
             {/* Inventario */}
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-semibold text-purple-400 flex items-center gap-2">
-                  🎒 Inventario
-                </h3>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400">
-                    {character.inventory?.length || 0} objetos
-                  </span>
-                  {!isDM && (
-                    <span
-                      className="text-xs text-yellow-400"
-                      title="Items equipados"
-                    >
-                      ⚔️ {equippedCount}/5
-                    </span>
-                  )}
-                  {isDM && character.inventory?.length > 0 && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={selectAllItems}
-                        className="text-xs text-purple-400 hover:text-purple-300"
-                        title={
-                          selectedItems.length === character.inventory?.length
-                            ? 'Deseleccionar todo'
-                            : 'Seleccionar todo'
-                        }
-                      >
-                        {selectedItems.length === character.inventory?.length
-                          ? '☑️'
-                          : '☐'}
-                      </button>
-                      {selectedItems.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={handleRemoveItems}
-                          disabled={removingItems}
-                          className="text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded disabled:opacity-50"
-                          title={`Eliminar ${selectedItems.length} item(s)`}
-                        >
-                          {removingItems ? '...' : `🗑️ ${selectedItems.length}`}
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-              {character.inventory && character.inventory.length > 0 ? (
-                <div className="space-y-2">
-                  {character.inventory.map((item) => (
-                    <div
-                      key={item.id}
-                      className={`bg-gray-700/50 rounded-lg p-3 transition-all ${
-                        item.equipped
-                          ? 'ring-2 ring-yellow-500 bg-yellow-900/20'
-                          : selectedItems.includes(item.id)
-                            ? 'ring-2 ring-purple-500 bg-purple-900/30'
-                            : ''
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          {isDM && (
-                            <input
-                              type="checkbox"
-                              checked={selectedItems.includes(item.id)}
-                              onChange={() => toggleItemSelection(item.id)}
-                              className="w-4 h-4 rounded border-gray-500 text-purple-600 focus:ring-purple-500 bg-gray-700 flex-shrink-0"
-                            />
-                          )}
-                          <span className="text-xl flex-shrink-0">
-                            {item.icon || '📦'}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium text-white truncate">
-                                {item.name}
-                              </p>
-                              {item.equipped && (
-                                <span className="text-xs bg-yellow-600 text-white px-1.5 py-0.5 rounded flex-shrink-0">
-                                  Equipado
-                                </span>
-                              )}
-                            </div>
-                            {item.description && (
-                              <p className="text-xs text-gray-400 truncate">
-                                {item.description}
-                              </p>
-                            )}
-                            {/* Info adicional del item */}
-                            <div className="flex items-center gap-2 mt-1 flex-wrap">
-                              {item.equipSlot && (
-                                <span className="text-xs text-blue-400">
-                                  📍 {item.equipSlot}
-                                </span>
-                              )}
-                              {(() => {
-                                const unitValue =
-                                  item.value && item.value > 0
-                                    ? item.value
-                                    : item.type === 'quest'
-                                      ? 0
-                                      : 1;
-                                return (
-                                  unitValue > 0 && (
-                                    <span className="text-xs text-yellow-400">
-                                      💰 {unitValue}
-                                    </span>
-                                  )
-                                );
-                              })()}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Cantidad y acciones */}
-                        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                          <span className="text-sm font-bold text-purple-400 bg-purple-900/30 px-2 py-1 rounded">
-                            x{item.quantity}
-                          </span>
-
-                          {/* Botones de acción para jugador (no DM) */}
-                          {!isDM && (
-                            <div className="flex gap-1">
-                              {/* Equipar/Desequipar */}
-                              {item.equippable &&
-                                (item.equipped ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUnequipItem(item.id)}
-                                    className="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded"
-                                    title="Desequipar"
-                                  >
-                                    ❌
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEquipItem(item.id)}
-                                    disabled={equippedCount >= 5}
-                                    className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title={
-                                      equippedCount >= 5
-                                        ? 'Máximo 5 items equipados'
-                                        : 'Equipar'
-                                    }
-                                  >
-                                    ⚔️
-                                  </button>
-                                ))}
-                              {/* Vender (usar valor por defecto si falta) */}
-                              {(() => {
-                                const unitValue =
-                                  item.value && item.value > 0
-                                    ? item.value
-                                    : item.type === 'quest'
-                                      ? 0
-                                      : 1;
-                                return (
-                                  unitValue > 0 &&
-                                  item.type !== 'quest' &&
-                                  !item.equipped && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSellItem(item)}
-                                      className="text-xs bg-yellow-600 hover:bg-yellow-500 text-white px-2 py-1 rounded"
-                                      title={`Vender por ${unitValue} oro`}
-                                    >
-                                      💰
-                                    </button>
-                                  )
-                                );
-                              })()}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="bg-gray-700/30 rounded-lg p-4">
-                  <p className="text-sm text-gray-500 text-center">
-                    🎒 Inventario vacío
-                  </p>
-                </div>
-              )}
+              <InventoryList
+                inventory={useMemo(
+                  () => character.inventory,
+                  [character.inventory],
+                )}
+                isDM={isDM}
+                equippedCount={equippedCount}
+                selectedItems={selectedItems}
+                toggleItemSelection={toggleItemSelection}
+                handleEquipItem={handleEquipItem}
+                handleUnequipItem={handleUnequipItem}
+                handleSellItem={handleSellItem}
+                addToast={addToast}
+                getSocket={getSocket}
+                character={character}
+                gameId={gameId}
+                removingItems={removingItems}
+                handleRemoveItems={handleRemoveItems}
+                selectAllItems={selectAllItems}
+              />
             </div>
           </div>
         </div>
