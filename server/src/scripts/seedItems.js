@@ -1012,8 +1012,19 @@ async function seedItems() {
       `🗑️ ${deleted.deletedCount} items del sistema anteriores eliminados`,
     );
 
-    // Insertar items base
-    await Item.insertMany(baseItems);
+    // Insertar items base en lotes para evitar timeouts con datasets grandes
+    const BATCH_SIZE = 100;
+    let insertedCount = 0;
+
+    for (let i = 0; i < baseItems.length; i += BATCH_SIZE) {
+      const batch = baseItems.slice(i, i + BATCH_SIZE);
+      await Item.insertMany(batch, { ordered: false }); // ordered: false para continuar si hay errores
+      insertedCount += batch.length;
+      console.log(
+        `   Procesados ${insertedCount}/${baseItems.length} items...`,
+      );
+    }
+
     console.log(`✅ ${baseItems.length} items base insertados`);
 
     // Resumen por tipo

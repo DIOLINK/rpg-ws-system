@@ -2,14 +2,19 @@ import mongoose from 'mongoose';
 
 const gameSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  dmId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  dmId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true, // Índice para búsquedas por DM
+  },
   players: [
     {
       userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       characterId: { type: mongoose.Schema.Types.ObjectId, ref: 'Character' },
     },
   ],
-  isActive: { type: Boolean, default: true },
+  isActive: { type: Boolean, default: true, index: true },
   createdAt: { type: Date, default: Date.now },
 
   // Sistema de turnos basado en iniciativa (dexterity)

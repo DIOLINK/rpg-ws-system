@@ -494,8 +494,18 @@ async function seedNPCTemplates() {
     // Limpiar plantillas globales existentes
     await NPCTemplate.deleteMany({ isGlobal: true });
 
-    // Insertar nuevas plantillas
-    await NPCTemplate.insertMany(defaultNPCTemplates);
+    // Insertar nuevas plantillas en lotes
+    const BATCH_SIZE = 50;
+    let insertedCount = 0;
+
+    for (let i = 0; i < defaultNPCTemplates.length; i += BATCH_SIZE) {
+      const batch = defaultNPCTemplates.slice(i, i + BATCH_SIZE);
+      await NPCTemplate.insertMany(batch, { ordered: false });
+      insertedCount += batch.length;
+      console.log(
+        `   Procesados ${insertedCount}/${defaultNPCTemplates.length} NPCs...`,
+      );
+    }
 
     console.log('✅ Plantillas de NPC creadas exitosamente');
     console.log(`   Total: ${defaultNPCTemplates.length} plantillas`);

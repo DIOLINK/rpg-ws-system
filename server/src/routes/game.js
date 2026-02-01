@@ -84,11 +84,13 @@ router.get('/my-games', authenticateUser, async (req, res) => {
     const userId = req.user._id;
 
     // Buscar partidas donde el usuario sea jugador o DM
+    // Usar lean() para queries de solo lectura
     const games = await Game.find({
       $or: [{ dmId: userId }, { 'players.userId': userId }],
     })
       .populate('dmId', 'name picture')
-      .populate('players.userId', 'name picture');
+      .populate('players.userId', 'name picture')
+      .lean();
 
     res.json(games);
   } catch (error) {
@@ -112,7 +114,7 @@ router.get('/:gameId', authenticateUser, async (req, res) => {
     // LOG para depuración: mostrar los players de la partida
     console.log(
       'Players en la partida:',
-      JSON.stringify(game.players, null, 2)
+      JSON.stringify(game.players, null, 2),
     );
 
     // Construir lista de personajes asociados a la partida con dueño
@@ -233,7 +235,7 @@ router.post(
       // Verificar si el personaje ya está asignado a la partida
       if (
         game.players.some(
-          (p) => p.characterId && p.characterId.toString() === characterId
+          (p) => p.characterId && p.characterId.toString() === characterId,
         )
       ) {
         return res
@@ -243,7 +245,7 @@ router.post(
 
       // Verificar si el usuario ya tiene un personaje en la partida
       const playerIndex = game.players.findIndex(
-        (p) => p.userId.toString() === userId.toString()
+        (p) => p.userId.toString() === userId.toString(),
       );
       if (playerIndex !== -1) {
         // Si ya está pero no tiene characterId, lo actualizamos
@@ -273,7 +275,7 @@ router.post(
         error: error.message || 'Error al asignar el personaje a la partida',
       });
     }
-  }
+  },
 );
 
 // Ruta para obtener las partidas de un usuario
@@ -311,7 +313,7 @@ router.post('/leave/:gameId', authenticateUser, async (req, res) => {
 
     // Buscar el jugador en la partida
     const playerIndex = game.players.findIndex(
-      (p) => p.userId.toString() === userId.toString()
+      (p) => p.userId.toString() === userId.toString(),
     );
     if (playerIndex === -1) {
       return res.status(400).json({ error: 'No estás en esta partida' });

@@ -1,7 +1,6 @@
 import express from 'express';
 import { authenticateUser } from '../middleware/auth.js';
 import { Character } from '../models/Character.js';
-import { User } from '../models/User.js';
 
 const router = express.Router();
 
@@ -54,17 +53,18 @@ router.get('/pending', authenticateUser, async (req, res) => {
     // Solo el DM puede ver esto (puedes mejorar la lógica de permisos)
     if (!req.user.isDM)
       return res.status(403).json({ error: 'Solo el DM puede ver esto' });
-    const pending = await Character.find({ validated: false });
-    // Opcional: poblar nombre de usuario
-    const withPlayer = await Promise.all(
-      pending.map(async (char) => {
-        const player = await User.findById(char.playerId);
-        return {
-          ...char.toObject(),
-          playerName: player?.username || player?.email,
-        };
-      }),
-    );
+
+    // Usar populate en lugar de Promise.all para evitar N+1
+    const pending = await Character.find({ validated: false })
+      .populate('playerId', 'username email')
+      .lean(); // Usar lean() para queries de solo lectura
+
+    // Mapear para agregar playerName
+    const withPlayer = pending.map((char) => ({
+      ...char,
+      playerName: char.playerId?.username || char.playerId?.email,
+    }));
+
     res.json(withPlayer);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -99,43 +99,60 @@ router.post('/validate/:id', authenticateUser, async (req, res) => {
 router.get('/', authenticateUser, async (req, res) => {
   try {
     const userId = req.user._id;
-    // Preparado para paginación futura
-    // const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 50 } = req.query; // Implementar paginación básica
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
     // Poblar itemRef en inventario
-    const characters = await Character.find({ playerId: userId }).lean();
+    const characters = await Character.find({ playerId: userId })
+      .limit(parseInt(limit))
+      .skip(skip)
+      .lean();
+
     // Para cada personaje, poblar los datos de itemRef en el inventario
     const Item = (await import('../models/Item.js')).Item;
-    const populatedCharacters = await Promise.all(
-      characters.map(async (char) => {
-        if (!char.inventory || char.inventory.length === 0) return char;
-        // Buscar todos los itemRefs únicos
-        const itemRefs = char.inventory
-          .map((item) => item.itemRef)
-          .filter((ref) => !!ref);
-        let itemDataMap = {};
-        if (itemRefs.length > 0) {
-          const items = await Item.find({ _id: { $in: itemRefs } }).lean();
-          itemDataMap = items.reduce((acc, item) => {
-            acc[item._id.toString()] = item;
-            return acc;
-          }, {});
-        }
-        // Mezclar datos del item base en cada item del inventario
-        char.inventory = char.inventory.map((item) => {
-          if (item.itemRef && itemDataMap[item.itemRef.toString()]) {
-            const base = itemDataMap[item.itemRef.toString()];
-            // Mezclar manualmente useEffect si existe en el item base
-            return {
-              ...base,
-              ...item,
-              useEffect: base.useEffect || item.useEffect || null,
-            };
-          }
-          return item;
+
+    // Optimización: recopilar todos los itemRefs de todos los personajes
+    const allItemRefs = new Set();
+    characters.forEach((char) => {
+      if (char.inventory && char.inventory.length > 0) {
+        char.inventory.forEach((item) => {
+          if (item.itemRef) allItemRefs.add(item.itemRef.toString());
         });
-        return char;
-      }),
-    );
+      }
+    });
+
+    // Una sola query para todos los items
+    let itemDataMap = {};
+    if (allItemRefs.size > 0) {
+      const items = await Item.find({
+        _id: { $in: Array.from(allItemRefs) },
+      }).lean();
+      itemDataMap = items.reduce((acc, item) => {
+        acc[item._id.toString()] = item;
+        return acc;
+      }, {});
+    }
+
+    // Mapear los items a cada personaje
+    const populatedCharacters = characters.map((char) => {
+      if (!char.inventory || char.inventory.length === 0) return char;
+
+      // Mezclar datos del item base en cada item del inventario
+      char.inventory = char.inventory.map((item) => {
+        if (item.itemRef && itemDataMap[item.itemRef.toString()]) {
+          const base = itemDataMap[item.itemRef.toString()];
+          // Mezclar manualmente useEffect si existe en el item base
+          return {
+            ...base,
+            ...item,
+            useEffect: base.useEffect || item.useEffect || null,
+          };
+        }
+        return item;
+      });
+      return char;
+    });
+
     res.json(populatedCharacters);
   } catch (err) {
     res.status(500).json({ error: err.message });

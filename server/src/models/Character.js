@@ -8,10 +8,12 @@ const characterSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+      index: true, // Índice para búsquedas por jugador
     },
     gameId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Game',
+      index: true, // Índice para búsquedas por partida
     },
     avatar: { type: String },
 
@@ -205,5 +207,10 @@ const characterSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+// Índices compuestos para consultas frecuentes
+characterSchema.index({ playerId: 1, gameId: 1 });
+characterSchema.index({ validated: 1 }); // Para búsquedas de pendientes
+characterSchema.index({ isNPC: 1, gameId: 1 }); // Para búsquedas de NPCs por partida
 
 export const Character = mongoose.model('Character', characterSchema);

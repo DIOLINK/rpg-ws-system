@@ -4,6 +4,7 @@ import { Game } from '../models/Game.js';
 import { User } from '../models/User.js';
 import { TurnOrchestrator } from '../utils/TurnOrchestrator.js';
 import { setupItemSocket } from './modules/itemSocket.js';
+import { socketRateLimiter } from './socketRateLimiter.js';
 
 // Función para calcular iniciativa basada en dexterity
 const calculateInitiative = async (characters) => {
@@ -118,6 +119,11 @@ const checkAndApplyKO = async (character) => {
 
 export const setupGameSockets = (io) => {
   io.on('connection', (socket) => {
+    // Aplicar rate limiting (máximo 20 eventos por segundo por socket)
+    socket.use(
+      socketRateLimiter.middleware({ maxRequests: 20, windowMs: 1000 }),
+    );
+
     // Modular: Handlers de items
     setupItemSocket(io, socket);
     console.log('🎮 Usuario conectado:', socket.id);
@@ -1473,6 +1479,12 @@ export const setupGameSockets = (io) => {
 
     socket.on('disconnect', () => {
       console.log('❌ Usuario desconectado:', socket.id);
+
+      // Limpiar rate limiter para este socket
+      socketRateLimiter.removeClient(socket.id);
+
+      // Remover todos los listeners para prevenir memory leaks
+      socket.removeAllListeners();
     });
   });
 };
