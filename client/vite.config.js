@@ -21,11 +21,20 @@ export default defineConfig({
   },
   build: {
     sourcemap: false, // Deshabilitar mapas de origen en producción
+    minify: 'terser', // Minificación más agresiva
+    cssMinify: true,
     rollupOptions: {
       input: {
         main: resolve(dirname(fileURLToPath(import.meta.url)), 'index.html'),
       },
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          icons: ['react-icons'],
+        },
+      },
     },
+    chunkSizeWarningLimit: 1000,
   },
   resolve: {
     alias: {

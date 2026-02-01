@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import {
   FaEdit,
   FaEllipsisV,
@@ -8,7 +8,7 @@ import {
 } from 'react-icons/fa';
 import useToastStore from '../context/toastStore';
 
-const CharacterActionsMenu = ({
+const CharacterActionsMenu = memo(function CharacterActionsMenu({
   onEdit,
   onDelete,
   onSend,
@@ -16,7 +16,7 @@ const CharacterActionsMenu = ({
   disabledEdit,
   disabledSend,
   disabledAssign,
-}) => {
+}) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -119,6 +119,6 @@ const CharacterActionsMenu = ({
       )}
     </div>
   );
-};
+});
 
 export default CharacterActionsMenu;

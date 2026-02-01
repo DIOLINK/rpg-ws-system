@@ -1,14 +1,16 @@
+import PropTypes from 'prop-types';
+import { memo } from 'react';
 import CharacterActionsMenu from './CharacterActionsMenu';
 import CharacterStatusBadge from './CharacterStatusBadge';
 
-const CharacterList = ({
+const CharacterList = memo(function CharacterList({
   characters,
   onEdit,
   onDelete,
   onSend,
   onAssignToGame,
   currentEditingId,
-}) => {
+}) {
   if (!characters.length) {
     return <p className="text-gray-500">No hay personajes creados.</p>;
   }
@@ -29,12 +31,12 @@ const CharacterList = ({
             />
             <p className="text-sm text-gray-600 mt-1">{char.description}</p>
           </div>
-          <div className="flex-shrink-0 ml-4">
+          <div className="shrink-0 ml-4">
             <CharacterActionsMenu
               onEdit={() => onEdit(char._id)}
               onSend={() => onSend(char._id)}
               onDelete={() => onDelete(char._id)}
-              onAssignToGame={() => onAssignToGame && onAssignToGame(char._id)}
+              onAssignToGame={() => onAssignToGame?.(char._id)}
               disabledEdit={false}
               disabledSend={!!char.validated}
               disabledAssign={!!char.gameId}
@@ -44,6 +46,15 @@ const CharacterList = ({
       ))}
     </ul>
   );
+});
+
+CharacterList.propTypes = {
+  characters: PropTypes.array.isRequired,
+  onEdit: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
+  onSend: PropTypes.func.isRequired,
+  onAssignToGame: PropTypes.func,
+  currentEditingId: PropTypes.string,
 };
 
 export default CharacterList;

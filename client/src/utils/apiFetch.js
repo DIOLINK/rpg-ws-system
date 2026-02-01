@@ -1,6 +1,7 @@
 // apiFetch.js
 // Utilidad para fetch con manejo automático de 401 y refresh token
 import { authService } from './authService';
+import { cacheService } from './cacheService';
 
 /**
  * apiFetch envuelve fetch y maneja el refresh automático de token si recibe un 401.
@@ -8,8 +9,16 @@ import { authService } from './authService';
  * @param {string} url
  * @param {object} options
  * @param {function} logoutCallback - función a ejecutar si el refresh falla
+ * @param {object} cacheOptions - opciones de caché { useCache: boolean, ttl: number }
  */
-export async function apiFetch(url, options = {}, logoutCallback) {
+export async function apiFetch(
+  url,
+  options = {},
+  logoutCallback,
+  cacheOptions = {},
+) {
+  const { useCache = true, ttl = 5 * 60 * 1000 } = cacheOptions; // 5 min por defecto
+
   let token = authService.getToken();
   let refreshToken = localStorage.getItem('refreshToken');
   options.headers = options.headers || {};
@@ -19,6 +28,19 @@ export async function apiFetch(url, options = {}, logoutCallback) {
   // Si hay body y no se ha definido Content-Type, poner application/json
   if (options.body && !options.headers['Content-Type']) {
     options.headers['Content-Type'] = 'application/json';
+  }
+
+  // Intentar usar caché para peticiones GET
+  const method = options.method || 'GET';
+  if (useCache && method === 'GET') {
+    const cacheKey = cacheService.getCacheKey(url, options);
+    const cached = cacheService.get(cacheKey);
+    if (cached) {
+      return new Response(JSON.stringify(cached), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
   }
 
   let response = await fetch(url, options);
@@ -48,6 +70,14 @@ export async function apiFetch(url, options = {}, logoutCallback) {
       if (typeof logoutCallback === 'function') logoutCallback();
       throw new Error('Sesión expirada. Por favor inicia sesión de nuevo.');
     }
+  }
+
+  // Guardar en caché si es exitoso y GET
+  if (useCache && method === 'GET' && response.ok) {
+    const clonedResponse = response.clone();
+    const data = await clonedResponse.json();
+    const cacheKey = cacheService.getCacheKey(url, options);
+    cacheService.set(cacheKey, data, ttl);
   }
 
   return response;

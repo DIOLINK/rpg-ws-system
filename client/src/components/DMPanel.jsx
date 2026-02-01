@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import Collapsible from './Collapsible';
 
-export const DMPanel = ({ characters, onDMCommand }) => {
+export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
   // Personajes pendientes de validación
   const pendingCharacters = characters.filter((c) => c.validated === false);
   const [selectedCharacters, setSelectedCharacters] = useState([]);
@@ -328,4 +328,4 @@ export const DMPanel = ({ characters, onDMCommand }) => {
       </div>
     </div>
   );
-};
+});

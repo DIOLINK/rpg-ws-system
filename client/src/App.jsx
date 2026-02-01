@@ -1,16 +1,33 @@
 import PropTypes from 'prop-types';
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import './App.css';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Login } from './components/Login';
 import NavBar from './components/NavBar';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import AssignCharacterPage from './pages/AssignCharacterPage';
-import CreateCharacterPage from './pages/CreateCharacterPage';
-import ErrorPage from './pages/ErrorPage';
-import { GameLobby } from './pages/GameLobby';
-import { GamePage } from './pages/GamePage';
-import { Profile } from './pages/Profile';
+
+// Lazy loading para páginas
+const AssignCharacterPage = lazy(() => import('./pages/AssignCharacterPage'));
+const CreateCharacterPage = lazy(() => import('./pages/CreateCharacterPage'));
+const ErrorPage = lazy(() => import('./pages/ErrorPage'));
+const GameLobby = lazy(() =>
+  import('./pages/GameLobby').then((m) => ({ default: m.GameLobby })),
+);
+const GamePage = lazy(() =>
+  import('./pages/GamePage').then((m) => ({ default: m.GamePage })),
+);
+const Profile = lazy(() =>
+  import('./pages/Profile').then((m) => ({ default: m.Profile })),
+);
+
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-pulse text-xl">Cargando...</div>
+    </div>
+  </div>
+);
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -35,54 +52,56 @@ function AppRoutes() {
 
   return (
     <ErrorBoundary>
-      <Routes>
-        <Route
-          path="/login"
-          element={user ? <Navigate to="/lobby" /> : <Login />}
-        />
-        <Route
-          path="/profile"
-          element={
-            <PrivateRoute>
-              <Profile />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/lobby"
-          element={
-            <PrivateRoute>
-              <GameLobby />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/game/:gameId"
-          element={
-            <PrivateRoute>
-              <GamePage />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/create-character"
-          element={
-            <PrivateRoute>
-              <CreateCharacterPage />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/assign-character/:gameId"
-          element={
-            <PrivateRoute>
-              <AssignCharacterPage />
-            </PrivateRoute>
-          }
-        />
-        <Route path="/error" element={<ErrorPage />} />
-        <Route path="*" element={<Navigate to="/login" />} />
-      </Routes>
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          <Route
+            path="/login"
+            element={user ? <Navigate to="/lobby" /> : <Login />}
+          />
+          <Route
+            path="/profile"
+            element={
+              <PrivateRoute>
+                <Profile />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/lobby"
+            element={
+              <PrivateRoute>
+                <GameLobby />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/game/:gameId"
+            element={
+              <PrivateRoute>
+                <GamePage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/create-character"
+            element={
+              <PrivateRoute>
+                <CreateCharacterPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/assign-character/:gameId"
+            element={
+              <PrivateRoute>
+                <AssignCharacterPage />
+              </PrivateRoute>
+            }
+          />
+          <Route path="/error" element={<ErrorPage />} />
+          <Route path="*" element={<Navigate to="/login" />} />
+        </Routes>
+      </Suspense>
     </ErrorBoundary>
   );
 }
