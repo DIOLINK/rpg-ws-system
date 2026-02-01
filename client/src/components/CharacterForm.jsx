@@ -15,8 +15,11 @@ const CharacterForm = ({
       }}
     >
       <div>
-        <label className="block font-semibold">Nombre</label>
+        <label htmlFor="character-name" className="block font-semibold">
+          Nombre
+        </label>
         <input
+          id="character-name"
           type="text"
           name="name"
           value={character.name}
@@ -27,8 +30,11 @@ const CharacterForm = ({
         />
       </div>
       <div>
-        <label className="block font-semibold">Descripción</label>
+        <label htmlFor="character-description" className="block font-semibold">
+          Descripción
+        </label>
         <textarea
+          id="character-description"
           name="description"
           value={character.description}
           onChange={onChange}
@@ -38,8 +44,11 @@ const CharacterForm = ({
         />
       </div>
       <div>
-        <label className="block font-semibold">Clase</label>
+        <label htmlFor="character-classType" className="block font-semibold">
+          Clase
+        </label>
         <select
+          id="character-classType"
           name="classType"
           value={character.classType || ''}
           onChange={onChange}
