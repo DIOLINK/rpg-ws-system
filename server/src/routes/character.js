@@ -100,11 +100,11 @@ router.get('/', authenticateUser, async (req, res) => {
   try {
     const userId = req.user._id;
     const { page = 1, limit = 50 } = req.query; // Implementar paginación básica
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const skip = (Number.parseInt(page, 10) - 1) * Number.parseInt(limit, 10);
 
     // Poblar itemRef en inventario
     const characters = await Character.find({ playerId: userId })
-      .limit(parseInt(limit))
+      .limit(Number.parseInt(limit, 10))
       .skip(skip)
       .lean();
 

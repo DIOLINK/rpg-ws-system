@@ -196,7 +196,7 @@ class PerformanceMonitor {
     const appMetrics = this.getAppMetrics();
 
     // Memory usage alto
-    if (parseFloat(systemMetrics.system.memUsagePercent) > 85) {
+    if (Number.parseFloat(systemMetrics.system.memUsagePercent) > 85) {
       issues.push({
         severity: 'HIGH',
         type: 'MEMORY',
@@ -206,8 +206,8 @@ class PerformanceMonitor {
 
     // Heap usage alto
     const heapUsagePercent =
-      (parseFloat(systemMetrics.process.heapUsedMB) /
-        parseFloat(systemMetrics.process.heapTotalMB)) *
+      (Number.parseFloat(systemMetrics.process.heapUsedMB) /
+        Number.parseFloat(systemMetrics.process.heapTotalMB)) *
       100;
     if (heapUsagePercent > 90) {
       issues.push({
@@ -218,7 +218,7 @@ class PerformanceMonitor {
     }
 
     // Error rate alto
-    if (parseFloat(appMetrics.errorRate) > 5) {
+    if (Number.parseFloat(appMetrics.errorRate) > 5) {
       issues.push({
         severity: 'MEDIUM',
         type: 'ERRORS',
