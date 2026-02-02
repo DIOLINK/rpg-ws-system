@@ -343,7 +343,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
               >
                 {config.icon} {config.label}s
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                 {typeTemplates.map((template) => (
                   <div
                     key={template._id}
@@ -383,7 +383,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
                         className="px-2 py-1 bg-purple-600 hover:bg-purple-500 rounded text-xs font-medium"
                         title="Invocar"
                       >
-                        ⚡ Invocar
+                        ⚡
                       </button>
                     </div>
                   </div>
