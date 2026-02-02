@@ -118,7 +118,7 @@ router.get('/:gameId', authenticateUser, async (req, res) => {
     );
 
     // Construir lista de personajes asociados a la partida con dueño
-    const characters = game.players
+    let characters = game.players
       .map((p) => {
         const character = p.characterId;
         if (!character) return null;
@@ -140,6 +140,51 @@ router.get('/:gameId', authenticateUser, async (req, res) => {
         };
       })
       .filter(Boolean);
+
+    // Poblar itemRef en el inventario de cada personaje
+    const { Item } = await import('../models/Item.js');
+
+    // Recopilar todos los itemRefs de todos los personajes
+    const allItemRefs = new Set();
+    characters.forEach((char) => {
+      if (char.inventory && char.inventory.length > 0) {
+        char.inventory.forEach((item) => {
+          if (item.itemRef) allItemRefs.add(item.itemRef.toString());
+        });
+      }
+    });
+
+    // Una sola query para todos los items
+    let itemDataMap = {};
+    if (allItemRefs.size > 0) {
+      const items = await Item.find({
+        _id: { $in: Array.from(allItemRefs) },
+      }).lean();
+      itemDataMap = items.reduce((acc, item) => {
+        acc[item._id.toString()] = item;
+        return acc;
+      }, {});
+    }
+
+    // Mapear los items a cada personaje
+    characters = characters.map((char) => {
+      if (!char.inventory || char.inventory.length === 0) return char;
+
+      // Mezclar datos del item base en cada item del inventario
+      char.inventory = char.inventory.map((item) => {
+        if (item.itemRef && itemDataMap[item.itemRef.toString()]) {
+          const base = itemDataMap[item.itemRef.toString()];
+          // Mezclar manualmente useEffect si existe en el item base
+          return {
+            ...base,
+            ...item,
+            useEffect: base.useEffect || item.useEffect || null,
+          };
+        }
+        return item;
+      });
+      return char;
+    });
 
     res.json({ game, characters });
   } catch (error) {
