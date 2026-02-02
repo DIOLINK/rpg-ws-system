@@ -175,11 +175,18 @@ router.get('/:gameId', authenticateUser, async (req, res) => {
         if (item.itemRef && itemDataMap[item.itemRef.toString()]) {
           const base = itemDataMap[item.itemRef.toString()];
           // Mezclar manualmente useEffect si existe en el item base
-          return {
+          const mergedItem = {
             ...base,
             ...item,
             useEffect: base.useEffect || item.useEffect || null,
           };
+          console.log('📦 Item poblado:', {
+            name: mergedItem.name,
+            hasUseEffect: !!mergedItem.useEffect,
+            useEffect: mergedItem.useEffect,
+            type: mergedItem.type,
+          });
+          return mergedItem;
         }
         return item;
       });
