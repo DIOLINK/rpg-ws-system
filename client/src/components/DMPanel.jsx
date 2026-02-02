@@ -183,35 +183,13 @@ export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
                     <span className="font-medium text-sm sm:text-base">
                       {character.name}
                     </span>
-                    <span
-                      className={`ml-2 text-xs px-2 py-1 rounded-full ${
-                        character.canEdit ? 'bg-green-600/50' : 'bg-gray-600/50'
-                      }`}
-                    >
-                      {character.canEdit ? '✏️' : '🔒'}
-                    </span>
                   </div>
                 </label>
-                <button
-                  onClick={() =>
-                    onDMCommand('toggle-edit', {
-                      characterId: character._id,
-                      canEdit: !character.canEdit,
-                    })
-                  }
-                  className={`w-full sm:w-auto px-3 py-1 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-                    character.canEdit
-                      ? 'bg-green-600 hover:bg-green-700'
-                      : 'bg-gray-600 hover:bg-gray-500'
-                  }`}
-                >
-                  {character.canEdit ? '✏️ Editable' : '🔒 Bloqueado'}
-                </button>
               </div>
 
               {/* Añadir habilidad */}
               <div className="mb-3 p-2 sm:p-3 bg-gray-600/50 rounded-lg">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 mb-2">
                   <input
                     type="text"
                     placeholder="Nombre habilidad"
@@ -224,9 +202,10 @@ export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
                     }
                     className="px-2 py-2 bg-gray-600 rounded text-sm"
                   />
-                  <input
-                    type="text"
+                  <textarea
+                    type="textarea"
                     placeholder="Descripción"
+                    role={2}
                     value={newAbility.description}
                     onChange={(e) =>
                       setNewAbility((prev) => ({
@@ -237,7 +216,10 @@ export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
                     className="px-2 py-2 bg-gray-600 rounded text-sm"
                   />
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex flex-col lg:flex-row gap-2">
+                  <label className="block text-xs font-medium text-gray-200 mb-1 text-left">
+                    Daño
+                  </label>
                   <input
                     type="text"
                     placeholder="Daño (ej: 1d6+2)"
@@ -250,9 +232,13 @@ export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
                     }
                     className="flex-1 px-2 py-2 bg-gray-600 rounded text-sm"
                   />
+                  <label className="block text-xs font-medium text-gray-200 mb-1 text-left">
+                    MP costo
+                  </label>
                   <input
                     type="number"
                     placeholder="Mana"
+                    aria-label="Mana"
                     value={newAbility.manaCost}
                     onChange={(e) =>
                       setNewAbility((prev) => ({
@@ -260,8 +246,9 @@ export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
                         manaCost: Number.parseInt(e.target.value) || 0,
                       }))
                     }
-                    className="w-full sm:w-20 px-2 py-2 bg-gray-600 rounded text-sm"
+                    className="w-full lg:w-20 px-2 py-2 bg-gray-600 rounded text-sm"
                   />
+
                   <button
                     onClick={() => addAbility(character._id)}
                     className="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm font-medium transition-colors"
@@ -301,7 +288,7 @@ export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
                     <option value="neutral">⚪ Neutral</option>
                   </select>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex flex-col lg:flex-row gap-2">
                   <input
                     type="number"
                     placeholder="Duración (turnos)"
@@ -312,7 +299,7 @@ export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
                         duration: Number.parseInt(e.target.value) || 0,
                       }))
                     }
-                    className="w-full sm:w-24 px-2 py-2 bg-gray-600 rounded text-sm"
+                    className="w-full lg:w-24 px-2 py-2 bg-gray-600 rounded text-sm"
                   />
                   <button
                     onClick={() => addStatus(character._id)}
