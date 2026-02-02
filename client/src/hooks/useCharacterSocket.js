@@ -139,8 +139,12 @@ export const useCharacterSocket = (initialCharacters = []) => {
     // Evento de actualización de inventario
     socket.current.on(
       'inventory-updated',
-      ({ characterId, inventory, gold }) => {
-        // console.log('📦 [CharacterSocket] inventory-updated:', characterId);
+      ({ characterId, inventory, gold, stats }) => {
+        console.log('📦 [CharacterSocket] inventory-updated:', {
+          characterId,
+          hasStats: !!stats,
+          stats,
+        });
         setCharacters((prev) =>
           prev.map((char) =>
             char._id === characterId
@@ -148,6 +152,7 @@ export const useCharacterSocket = (initialCharacters = []) => {
                   ...char,
                   inventory: inventory || char.inventory,
                   gold: gold ?? char.gold,
+                  stats: stats || char.stats,
                 }
               : char,
           ),

@@ -203,12 +203,14 @@ export const useGameSocket = (gameId, onJoinedGame) => {
     // Evento de actualización de inventario
     socket.current.on(
       'inventory-updated',
-      ({ characterId, inventory, gold, itemData, action }) => {
-        // console.log('📦 [GameSocket] inventory-updated:', {
-        //   characterId,
-        //   action,
-        //   itemData,
-        // });
+      ({ characterId, inventory, gold, stats, itemData, action }) => {
+        console.log('📦 [GameSocket] inventory-updated:', {
+          characterId,
+          action,
+          itemData,
+          hasStats: !!stats,
+          stats,
+        });
         setCharacters((prev) =>
           prev.map((char) =>
             char._id === characterId
@@ -216,6 +218,7 @@ export const useGameSocket = (gameId, onJoinedGame) => {
                   ...char,
                   inventory: inventory || char.inventory,
                   gold: gold ?? char.gold,
+                  stats: stats || char.stats,
                 }
               : char,
           ),

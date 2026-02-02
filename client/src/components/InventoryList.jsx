@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import { memo } from 'react';
+import { itemSocketService } from '../services/itemSocketService';
 
 const InventoryList = memo(function InventoryList({
   inventory,
@@ -172,6 +173,14 @@ const InventoryList = memo(function InventoryList({
                           <button
                             type="button"
                             onClick={() => {
+                              console.log('🎯 Consumiendo item:', {
+                                itemName: item.name,
+                                itemId: item.id || item._id,
+                                characterId: character._id,
+                                gameId,
+                                hasUseEffect: !!item.useEffect,
+                                useEffect: item.useEffect,
+                              });
                               itemSocketService.consumeItem(getSocket(), {
                                 characterId: character._id,
                                 inventoryId: item.id || item._id,
