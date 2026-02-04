@@ -163,6 +163,10 @@ const characterSchema = new mongoose.Schema(
       type: Number,
       default: 1,
     },
+    xp: {
+      type: Number,
+      default: 0,
+    },
 
     // Validación por el DM
     validated: {

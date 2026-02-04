@@ -3,6 +3,7 @@ import { Character } from '../models/Character.js';
 import { Game } from '../models/Game.js';
 import { User } from '../models/User.js';
 import { TurnOrchestrator } from '../utils/TurnOrchestrator.js';
+import { assignXPToCharacter, getXPProgress } from '../utils/xpSystem.js';
 import { setupItemSocket } from './modules/itemSocket.js';
 import { socketRateLimiter } from './socketRateLimiter.js';
 
@@ -1472,6 +1473,234 @@ export const setupGameSockets = (io) => {
           turnOrder: game.turnOrder,
           currentTurnIndex: game.currentTurnIndex,
         });
+      } catch (error) {
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    // --- XP SYSTEM ---
+
+    // DM: Assign XP to selected characters
+    socket.on('dm:assign-xp', async ({ gameId, characterIds, xp }) => {
+      try {
+        console.log(
+          `📥 [socket:${socket.id}] dm:assign-xp received for gameId=${gameId}, characterIds=${characterIds}, xp=${xp}`,
+        );
+
+        // Verify DM authorization
+        const authorized = await isDM(socket, gameId);
+        if (!authorized) {
+          socket.emit('error', { message: 'Not authorized' });
+          return;
+        }
+
+        // Validate input
+        if (!xp || xp <= 0) {
+          socket.emit('error', { message: 'Invalid XP amount' });
+          return;
+        }
+
+        if (!characterIds || characterIds.length === 0) {
+          socket.emit('error', { message: 'No characters selected' });
+          return;
+        }
+
+        // Get game settings
+        const game = await Game.findById(gameId);
+        if (!game) {
+          socket.emit('error', { message: 'Game not found' });
+          return;
+        }
+
+        const { baseXP, exponent } = game;
+        const results = [];
+
+        // Process each character
+        for (const characterId of characterIds) {
+          const character = await Character.findById(characterId);
+          if (!character) {
+            console.log(`⚠️ Character ${characterId} not found, skipping`);
+            continue;
+          }
+
+          // Calculate XP assignment and auto-leveling
+          const xpResult = assignXPToCharacter(character, xp, baseXP, exponent);
+
+          // Update character
+          character.level = xpResult.newLevel;
+          character.xp = xpResult.newXP;
+          await character.save();
+
+          // Get XP progress info
+          const progressInfo = getXPProgress(character, baseXP, exponent);
+
+          results.push({
+            characterId: character._id,
+            characterName: character.name,
+            oldLevel: character.level - xpResult.levelsGained,
+            newLevel: xpResult.newLevel,
+            levelsGained: xpResult.levelsGained,
+            xpGained: xp,
+            totalXP: xpResult.newXP,
+            levelDetails: xpResult.levelDetails,
+            progressInfo,
+          });
+
+          console.log(
+            `✅ Assigned ${xp} XP to ${character.name}. Levels gained: ${xpResult.levelsGained}`,
+          );
+        }
+
+        // Emit to all clients in the game
+        io.to(`game:${gameId}`).emit('xp-assigned', {
+          results,
+          xpAmount: xp,
+        });
+
+        // Also emit individual character updates
+        for (const result of results) {
+          const character = await Character.findById(result.characterId);
+          if (character) {
+            io.to(`game:${gameId}`).emit('character-updated', character);
+          }
+        }
+
+        console.log(
+          `🎉 [socket:${socket.id}] XP assigned successfully to ${results.length} characters`,
+        );
+      } catch (error) {
+        console.error('❌ Error assigning XP:', error);
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    // DM: Update game XP settings (baseXP, exponent)
+    socket.on('dm:update-xp-settings', async ({ gameId, baseXP, exponent }) => {
+      try {
+        console.log(
+          `📥 [socket:${socket.id}] dm:update-xp-settings received for gameId=${gameId}`,
+        );
+
+        // Verify DM authorization
+        const authorized = await isDM(socket, gameId);
+        if (!authorized) {
+          socket.emit('error', { message: 'Not authorized' });
+          return;
+        }
+
+        // Validate input
+        if (baseXP !== undefined && (baseXP <= 0 || isNaN(baseXP))) {
+          socket.emit('error', { message: 'Invalid baseXP value' });
+          return;
+        }
+
+        if (exponent !== undefined && (exponent <= 1 || isNaN(exponent))) {
+          socket.emit('error', {
+            message: 'Invalid exponent value (must be > 1)',
+          });
+          return;
+        }
+
+        // Update game settings
+        const game = await Game.findById(gameId);
+        if (!game) {
+          socket.emit('error', { message: 'Game not found' });
+          return;
+        }
+
+        if (baseXP !== undefined) game.baseXP = baseXP;
+        if (exponent !== undefined) game.exponent = exponent;
+
+        await game.save();
+
+        // Emit to all clients in the game
+        io.to(`game:${gameId}`).emit('xp-settings-updated', {
+          baseXP: game.baseXP,
+          exponent: game.exponent,
+        });
+
+        console.log(
+          `✅ [socket:${socket.id}] XP settings updated: baseXP=${game.baseXP}, exponent=${game.exponent}`,
+        );
+      } catch (error) {
+        console.error('❌ Error updating XP settings:', error);
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    // Get XP progress for a character
+    socket.on('get-xp-progress', async ({ characterId, gameId }) => {
+      try {
+        const character = await Character.findById(characterId);
+        if (!character) {
+          socket.emit('error', { message: 'Character not found' });
+          return;
+        }
+
+        const game = await Game.findById(gameId);
+        if (!game) {
+          socket.emit('error', { message: 'Game not found' });
+          return;
+        }
+
+        const progressInfo = getXPProgress(
+          character,
+          game.baseXP,
+          game.exponent,
+        );
+
+        socket.emit('xp-progress', {
+          characterId,
+          ...progressInfo,
+        });
+      } catch (error) {
+        console.error('❌ Error getting XP progress:', error);
+        socket.emit('error', { message: error.message });
+      }
+    });
+
+    // Player: Solicita subir de nivel si tiene suficiente XP
+    socket.on('player:level-up-request', async ({ characterId, gameId }) => {
+      try {
+        const character = await Character.findById(characterId);
+        if (!character) {
+          socket.emit('error', { message: 'Character not found' });
+          return;
+        }
+        const game = await Game.findById(gameId);
+        if (!game) {
+          socket.emit('error', { message: 'Game not found' });
+          return;
+        }
+        const { baseXP, exponent } = game;
+        const nextLevelXP = require('../utils/xpSystem.js').calculateXPForLevel(
+          character.level + 1,
+          baseXP,
+          exponent,
+        );
+
+        if (character.xp >= nextLevelXP) {
+          character.level += 1;
+          await character.save();
+
+          // Notificar al jugador y a la partida
+          io.to(`user:${character.playerId}`).emit(
+            'character-updated',
+            character,
+          );
+          io.to(`game:${gameId}`).emit('character-updated', character);
+
+          socket.emit('level-up-success', {
+            characterId,
+            newLevel: character.level,
+            totalXP: character.xp,
+          });
+        } else {
+          socket.emit('level-up-failed', {
+            characterId,
+            reason: 'Not enough XP for next level',
+          });
+        }
       } catch (error) {
         socket.emit('error', { message: error.message });
       }

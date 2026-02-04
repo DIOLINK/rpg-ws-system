@@ -30,6 +30,10 @@ const gameSchema = new mongoose.Schema({
   ],
   currentTurnIndex: { type: Number, default: 0 }, // Índice del personaje con el turno actual
   combatStarted: { type: Boolean, default: false }, // Indica si el combate ha iniciado
+
+  // Sistema de experiencia (XP)
+  baseXP: { type: Number, default: 100 }, // XP base para calcular niveles
+  exponent: { type: Number, default: 1.1 }, // Exponente para crecimiento de XP
 });
 
 // Método estático para asignar un personaje a una partida
