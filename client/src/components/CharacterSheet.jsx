@@ -1,5 +1,10 @@
 import PropTypes from 'prop-types';
-import { useEffect, useMemo, useState } from 'react';
+import {
+  useEffect,
+  useEffect as useLayoutEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useAuth } from '../context/AuthContext';
 import useToastStore from '../context/toastStore';
 import { useGameSocket } from '../hooks/useGameSocket';
@@ -10,6 +15,13 @@ import AccordionList from './AccordionList';
 import CharacterStats from './CharacterStats';
 import Collapsible from './Collapsible';
 import InventoryList from './InventoryList';
+// Utilidad para calcular XP de nivel (igual que en backend)
+function calculateXPForLevel(level, baseXP = 100, exponent = 1.1) {
+  if (level <= 1) return 0;
+  return Math.floor(
+    (baseXP * (Math.pow(exponent, level - 1) - 1)) / (exponent - 1),
+  );
+}
 // Iconos por tipo de clase
 const CLASS_ICONS = {
   guerrero: '⚔️',
@@ -34,6 +46,83 @@ export const CharacterSheet = ({
   const { isDM } = useAuth();
   // Obtener socket para emitir eventos
   const { getSocket } = useGameSocket(gameId);
+
+  // Estado para XP
+  const [xpInfo, setXpInfo] = useState({
+    currentXP: character.xp || 0,
+    xpForCurrentLevel: 0,
+    xpForNextLevel: 0,
+    xpNeededForNextLevel: 0,
+    progressPercentage: 0,
+  });
+  const [levelUpLoading, setLevelUpLoading] = useState(false);
+
+  // Obtener baseXP y exponent de la partida (puedes ajustar según tu estructura)
+  // Aquí se asume que vienen en character.gameSettings, si no, pásalos como prop o desde contexto
+  const baseXP = character.baseXP || 100;
+  const exponent = character.exponent || 1.1;
+
+  useEffect(() => {
+    // Calcular info de XP
+    const xpForCurrentLevel = calculateXPForLevel(
+      character.level,
+      baseXP,
+      exponent,
+    );
+    const xpForNextLevel = calculateXPForLevel(
+      character.level + 1,
+      baseXP,
+      exponent,
+    );
+    const currentXP = character.xp || 0;
+    const xpNeededForNextLevel = xpForNextLevel - xpForCurrentLevel;
+    const currentProgress = currentXP - xpForCurrentLevel;
+    const progressPercentage =
+      xpNeededForNextLevel > 0
+        ? (currentProgress / xpNeededForNextLevel) * 100
+        : 0;
+    setXpInfo({
+      currentXP,
+      xpForCurrentLevel,
+      xpForNextLevel,
+      xpNeededForNextLevel,
+      progressPercentage: Math.min(100, Math.max(0, progressPercentage)),
+      currentProgress,
+    });
+  }, [character.xp, character.level, baseXP, exponent]);
+
+  // Handler para subir de nivel
+  const handleLevelUp = () => {
+    setLevelUpLoading(true);
+    const socket = getSocket();
+    socket.emit('player:level-up-request', {
+      characterId: character._id,
+      gameId,
+    });
+  };
+
+  // Escuchar respuesta de level up
+  useLayoutEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+    const onSuccess = ({ characterId, newLevel }) => {
+      setLevelUpLoading(false);
+      addToast({ type: 'success', message: `¡Subiste a nivel ${newLevel}!` });
+    };
+    const onFail = ({ characterId, reason }) => {
+      setLevelUpLoading(false);
+      addToast({
+        type: 'error',
+        message: reason || 'No se pudo subir de nivel',
+      });
+    };
+    socket.on('level-up-success', onSuccess);
+    socket.on('level-up-failed', onFail);
+    return () => {
+      socket.off('level-up-success', onSuccess);
+      socket.off('level-up-failed', onFail);
+    };
+  }, [getSocket, addToast]);
   const addToast = useToastStore((state) => state.addToast);
   const [editing, setEditing] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -495,6 +584,40 @@ export const CharacterSheet = ({
 
             {/* Barra HP */}
             <div className="mb-4 relative">
+              {/* Barra de XP */}
+              <div className="mb-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-yellow-400 text-xs font-bold">EXP</span>
+                  <span className="text-xs text-gray-300">
+                    {xpInfo.currentXP} / {xpInfo.xpForNextLevel} XP
+                  </span>
+                </div>
+                <div className="w-full bg-yellow-900 rounded-full h-3 overflow-hidden relative">
+                  <div
+                    className="h-full bg-yellow-400 transition-all duration-500"
+                    style={{ width: `${xpInfo.progressPercentage}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs mt-1 text-gray-400">
+                  <span>
+                    Faltan{' '}
+                    {xpInfo.xpNeededForNextLevel -
+                      (xpInfo.currentXP - xpInfo.xpForCurrentLevel)}{' '}
+                    XP
+                  </span>
+                  <span>Nivel {character.level + 1}</span>
+                </div>
+                {/* Botón de subir de nivel */}
+                {xpInfo.currentXP >= xpInfo.xpForNextLevel && (
+                  <button
+                    className="mt-2 px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded font-bold text-xs transition-all disabled:opacity-60"
+                    onClick={handleLevelUp}
+                    disabled={levelUpLoading}
+                  >
+                    {levelUpLoading ? 'Subiendo...' : 'Subir de nivel'}
+                  </button>
+                )}
+              </div>
               <div className="flex items-center mb-1 justify-between">
                 <div className="flex items-center">
                   <span className="text-red-400 text-lg mr-2">❤️</span>

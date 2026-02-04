@@ -1,6 +1,14 @@
 import { memo, useState } from 'react';
 import Collapsible from './Collapsible';
 
+// Utilidad para calcular XP de nivel (igual que en backend)
+function calculateXPForLevel(level, baseXP = 100, exponent = 1.1) {
+  if (level <= 1) return 0;
+  return Math.floor(
+    (baseXP * (Math.pow(exponent, level - 1) - 1)) / (exponent - 1),
+  );
+}
+
 export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
   // Personajes pendientes de validación
   const pendingCharacters = characters.filter((c) => c.validated === false);
@@ -20,12 +28,29 @@ export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
     duration: 0,
   });
 
+  // Estado para asignar XP
+  const [xpAmount, setXpAmount] = useState(0);
+  const [xpLoading, setXpLoading] = useState(false);
+
   const toggleCharacter = (characterId) => {
     setSelectedCharacters((prev) =>
       prev.includes(characterId)
         ? prev.filter((id) => id !== characterId)
         : [...prev, characterId],
     );
+  };
+
+  // Asignar XP a los seleccionados
+  const assignXP = () => {
+    if (selectedCharacters.length === 0 || xpAmount <= 0) return;
+    setXpLoading(true);
+    onDMCommand('assign-xp', {
+      characterIds: selectedCharacters,
+      xp: Number.parseInt(xpAmount),
+    });
+    setTimeout(() => setXpLoading(false), 1000); // Simulación de espera
+    setXpAmount(0);
+    setSelectedCharacters([]);
   };
 
   const applyDamage = () => {
@@ -125,6 +150,33 @@ export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
           {characters.length} personajes
         </span>
       </div>
+
+      {/* Asignar XP */}
+      <Collapsible title="✨ Asignar Experiencia (XP)" defaultOpen>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xs text-gray-400">
+            ({selectedCharacters.length} seleccionados)
+          </span>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 mb-3">
+          <input
+            type="number"
+            placeholder="Cantidad de XP"
+            value={xpAmount}
+            onChange={(e) => setXpAmount(e.target.value)}
+            className="flex-1 px-3 py-2 bg-gray-600 rounded-lg text-sm sm:text-base"
+          />
+        </div>
+        <button
+          onClick={assignXP}
+          disabled={
+            selectedCharacters.length === 0 || xpAmount <= 0 || xpLoading
+          }
+          className="w-full py-2 sm:py-3 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-medium transition-colors text-sm sm:text-base"
+        >
+          ✨ Asignar {xpAmount || 0} XP
+        </button>
+      </Collapsible>
 
       {/* Daño Masivo */}
       <Collapsible title="⚔️ Daño Masivo" defaultOpen>
