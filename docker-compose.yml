@@ -1,0 +1,52 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: rpg-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - rpg-network
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: rpg-server
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    env_file:
+      - .env.docker
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017/rpg-ws-system
+      - PORT=5001
+      - FRONTEND_URL=http://localhost
+    depends_on:
+      - mongo
+    networks:
+      - rpg-network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        VITE_BASE_URL: http://localhost:5001
+    container_name: rpg-client
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - server
+    networks:
+      - rpg-network
+
+volumes:
+  mongo-data:
+
+networks:
+  rpg-network:
+    driver: bridge
