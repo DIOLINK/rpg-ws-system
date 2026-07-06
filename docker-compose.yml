@@ -19,7 +19,7 @@ services:
     ports:
       - "5001:5001"
     env_file:
-      - .env.docker
+      - .env
     environment:
       - MONGODB_URI=mongodb://mongo:27017/rpg-ws-system
       - PORT=5001
@@ -35,6 +35,14 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_BASE_URL: ""
+        VITE_API_URL: ""
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY}
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID}
+        VITE_FIREBASE_STORAGE_BUCKET: ${VITE_FIREBASE_STORAGE_BUCKET}
+        VITE_FIREBASE_MESSAGING_SENDER_ID: ${VITE_FIREBASE_MESSAGING_SENDER_ID}
+        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID}
     container_name: rpg-client
     restart: unless-stopped
     ports:
@@ -49,7 +57,7 @@ services:
     container_name: rpg-ngrok
     restart: unless-stopped
     env_file:
-      - .env.docker
+      - .env
     ports:
       - "4040:4040"
     command: "http http://client:80"
