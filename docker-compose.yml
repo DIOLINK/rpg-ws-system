@@ -23,7 +23,7 @@ services:
     environment:
       - MONGODB_URI=mongodb://mongo:27017/rpg-ws-system
       - PORT=5001
-      - FRONTEND_URL=http://localhost
+      - FRONTEND_URL=*
     depends_on:
       - mongo
     networks:
@@ -34,13 +34,27 @@ services:
       context: ./client
       dockerfile: Dockerfile
       args:
-        VITE_BASE_URL: http://localhost:5001
+        VITE_BASE_URL: ""
     container_name: rpg-client
     restart: unless-stopped
     ports:
       - "3000:80"
     depends_on:
       - server
+    networks:
+      - rpg-network
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: rpg-ngrok
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    ports:
+      - "4040:4040"
+    command: "http http://client:80"
+    depends_on:
+      - client
     networks:
       - rpg-network
 
