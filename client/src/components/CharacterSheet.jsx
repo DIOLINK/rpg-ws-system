@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import {
   useEffect,
-  useEffect as useLayoutEffect,
+  useLayoutEffect,
   useMemo,
   useState,
 } from 'react';
@@ -101,6 +101,8 @@ export const CharacterSheet = ({
     });
   };
 
+  const addToast = useToastStore((state) => state.addToast);
+
   // Escuchar respuesta de level up
   useLayoutEffect(() => {
     const socket = getSocket();
@@ -123,7 +125,6 @@ export const CharacterSheet = ({
       socket.off('level-up-failed', onFail);
     };
   }, [getSocket, addToast]);
-  const addToast = useToastStore((state) => state.addToast);
   const [editing, setEditing] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
   const [classAbilities, setClassAbilities] = useState([]);
@@ -465,7 +466,7 @@ export const CharacterSheet = ({
         {/* Botón Flip - Esquina superior derecha */}
         <button
           onClick={handleFlip}
-          className="absolute top-3 right-2 z-1 w-10 h-10 bg-gray-700/90 hover:bg-purple-600 rounded-full font-medium transition-all duration-300 flex items-center justify-center shadow-lg hover:scale-110 hover:shadow-purple-500/30"
+          className="absolute top-3 right-2 z-10 w-11 h-11 min-h-touch bg-gray-700/90 hover:bg-purple-600 active:bg-purple-700 rounded-full font-medium transition-all duration-300 flex items-center justify-center shadow-lg hover:scale-110 hover:shadow-purple-500/30"
           title={
             isFlipped
               ? 'Ver stats y habilidades'
@@ -622,14 +623,14 @@ export const CharacterSheet = ({
                 <div className="flex items-center">
                   <span className="text-red-400 text-lg mr-2">❤️</span>
                   {editing ? (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-wrap">
                       <span className="text-xs text-gray-300">HP:</span>
                       <input
                         type="number"
                         name="hp"
                         value={formData.hp}
                         onChange={handleInputChange}
-                        className="w-12 px-1 py-0.5 bg-gray-600 rounded text-xs text-center"
+                        className="w-16 px-2 py-1 bg-gray-600 rounded text-xs text-center"
                       />
                       <span className="text-xs text-gray-300">/</span>
                       <input
@@ -637,14 +638,14 @@ export const CharacterSheet = ({
                         name="maxHp"
                         value={formData.maxHp}
                         onChange={handleInputChange}
-                        className="w-12 px-1 py-0.5 bg-gray-600 rounded text-xs text-center"
+                        className="w-16 px-2 py-1 bg-gray-600 rounded text-xs text-center"
                       />
                       <button
                         type="button"
                         onClick={() =>
                           setFormData((prev) => ({ ...prev, hp: prev.maxHp }))
                         }
-                        className="px-1.5 py-0.5 bg-red-500 hover:bg-red-400 rounded text-xs text-white"
+                        className="px-2 py-1 bg-red-500 hover:bg-red-400 active:bg-red-600 rounded text-xs text-white min-h-touch"
                         title="Llenar HP al máximo"
                       >
                         MAX
@@ -706,14 +707,14 @@ export const CharacterSheet = ({
                 <div className="flex items-center">
                   <span className="text-blue-400 text-lg mr-2">💙</span>
                   {editing ? (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-wrap">
                       <span className="text-xs text-gray-300">MP:</span>
                       <input
                         type="number"
                         name="mana"
                         value={formData.mana}
                         onChange={handleInputChange}
-                        className="w-12 px-1 py-0.5 bg-gray-600 rounded text-xs text-center"
+                        className="w-16 px-2 py-1 bg-gray-600 rounded text-xs text-center"
                       />
                       <span className="text-xs text-gray-300">/</span>
                       <input
@@ -721,7 +722,7 @@ export const CharacterSheet = ({
                         name="maxMana"
                         value={formData.maxMana}
                         onChange={handleInputChange}
-                        className="w-12 px-1 py-0.5 bg-gray-600 rounded text-xs text-center"
+                        className="w-16 px-2 py-1 bg-gray-600 rounded text-xs text-center"
                       />
                       <button
                         type="button"
@@ -731,7 +732,7 @@ export const CharacterSheet = ({
                             mana: prev.maxMana,
                           }))
                         }
-                        className="px-1.5 py-0.5 bg-blue-500 hover:bg-blue-400 rounded text-xs text-white"
+                        className="px-2 py-1 bg-blue-500 hover:bg-blue-400 active:bg-blue-600 rounded text-xs text-white min-h-touch"
                         title="Llenar MP al máximo"
                       >
                         MAX
@@ -832,42 +833,44 @@ export const CharacterSheet = ({
                         <p className="text-xs text-green-400 mb-2">
                           ✅ Habilidades del personaje:
                         </p>
-                        <AccordionList
-                          items={ownAbilities.map((ability) => ({
-                            id: ability.id || ability._id,
-                            title: ability.name,
-                            subtitle:
-                              ability.manaCost > 0
-                                ? `💙 ${ability.manaCost}`
-                                : '',
-                            icon:
-                              CLASS_ICONS[character.classType] ||
-                              CLASS_ICONS.default,
-                            content: (
-                              <div>
-                                <div className="text-xs text-gray-400 mb-1">
-                                  {ability.description}
-                                </div>
-                                {ability.damage && (
-                                  <div className="text-xs text-orange-400 mb-1">
-                                    Daño: {ability.damage}
+                        <div className="sm:contents">
+                          <AccordionList
+                            items={ownAbilities.map((ability) => ({
+                              id: ability.id || ability._id,
+                              title: ability.name,
+                              subtitle:
+                                ability.manaCost > 0
+                                  ? `💙 ${ability.manaCost}`
+                                  : '',
+                              icon:
+                                CLASS_ICONS[character.classType] ||
+                                CLASS_ICONS.default,
+                              content: (
+                                <div>
+                                  <div className="text-xs text-gray-400 mb-1">
+                                    {ability.description}
                                   </div>
-                                )}
-                                {canEdit && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onUpdate({ removeAbility: ability.id });
-                                    }}
-                                    className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-900/30 transition-colors mt-2"
-                                  >
-                                    🗑️ Eliminar
-                                  </button>
-                                )}
-                              </div>
-                            ),
-                          }))}
-                        />
+                                  {ability.damage && (
+                                    <div className="text-xs text-orange-400 mb-1">
+                                      Daño: {ability.damage}
+                                    </div>
+                                  )}
+                                  {canEdit && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onUpdate({ removeAbility: ability.id });
+                                      }}
+                                      className="text-red-400 hover:text-red-300 active:text-red-200 p-2 rounded hover:bg-red-900/30 transition-colors mt-2 min-h-touch"
+                                    >
+                                      🗑️ Eliminar
+                                    </button>
+                                  )}
+                                </div>
+                              ),
+                            }))}
+                          />
+                        </div>
                       </div>
                     )}
 
@@ -877,42 +880,44 @@ export const CharacterSheet = ({
                         <p className="text-xs text-gray-400 mb-2">
                           📚 Habilidades de clase disponibles:
                         </p>
-                        <AccordionList
-                          items={availableClassAbilities.map((ability) => ({
-                            id: ability.id || ability._id || ability.name,
-                            title: ability.name,
-                            subtitle:
-                              ability.manaCost > 0
-                                ? `💙 ${ability.manaCost}`
-                                : '',
-                            icon:
-                              CLASS_ICONS[character.classType] ||
-                              CLASS_ICONS.default,
-                            content: (
-                              <div>
-                                <div className="text-xs text-gray-400 mb-1">
-                                  {ability.description}
-                                </div>
-                                {ability.damage && (
-                                  <div className="text-xs text-orange-400 mb-1">
-                                    Daño: {ability.damage}
+                        <div className="sm:contents">
+                          <AccordionList
+                            items={availableClassAbilities.map((ability) => ({
+                              id: ability.id || ability._id || ability.name,
+                              title: ability.name,
+                              subtitle:
+                                ability.manaCost > 0
+                                  ? `💙 ${ability.manaCost}`
+                                  : '',
+                              icon:
+                                CLASS_ICONS[character.classType] ||
+                                CLASS_ICONS.default,
+                              content: (
+                                <div>
+                                  <div className="text-xs text-gray-400 mb-1">
+                                    {ability.description}
                                   </div>
-                                )}
-                                {canEdit && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onUpdate({ addAbility: ability });
-                                    }}
-                                    className="text-green-400 hover:text-green-300 p-1 rounded hover:bg-green-900/30 transition-colors mt-2"
-                                  >
-                                    ➕ Añadir al personaje
-                                  </button>
-                                )}
-                              </div>
-                            ),
-                          }))}
-                        />
+                                  {ability.damage && (
+                                    <div className="text-xs text-orange-400 mb-1">
+                                      Daño: {ability.damage}
+                                    </div>
+                                  )}
+                                  {canEdit && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onUpdate({ addAbility: ability });
+                                      }}
+                                      className="text-green-400 hover:text-green-300 active:text-green-200 p-2 rounded hover:bg-green-900/30 transition-colors mt-2 min-h-touch"
+                                    >
+                                      ➕ Añadir al personaje
+                                    </button>
+                                  )}
+                                </div>
+                              ),
+                            }))}
+                          />
+                        </div>
                       </div>
                     )}
 
@@ -1093,7 +1098,7 @@ export const CharacterSheet = ({
                           quantity: Math.max(1, prev.quantity - 1),
                         }))
                       }
-                      className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg text-xl font-bold"
+                      className="w-11 h-11 min-h-touch bg-gray-700 hover:bg-gray-600 active:bg-gray-800 rounded-lg text-xl font-bold"
                     >
                       -
                     </button>
@@ -1111,7 +1116,7 @@ export const CharacterSheet = ({
                           ),
                         }))
                       }
-                      className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg text-xl font-bold"
+                      className="w-11 h-11 min-h-touch bg-gray-700 hover:bg-gray-600 active:bg-gray-800 rounded-lg text-xl font-bold"
                     >
                       +
                     </button>
@@ -1138,14 +1143,14 @@ export const CharacterSheet = ({
                 <button
                   type="button"
                   onClick={() => setSellModal(null)}
-                  className="flex-1 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg font-medium transition-colors"
+                  className="flex-1 py-3 bg-gray-600 hover:bg-gray-500 active:bg-gray-700 rounded-lg font-medium transition-colors min-h-touch"
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   onClick={confirmSell}
-                  className="flex-1 py-2 bg-yellow-600 hover:bg-yellow-500 rounded-lg font-medium transition-colors"
+                  className="flex-1 py-3 bg-yellow-600 hover:bg-yellow-500 active:bg-yellow-700 rounded-lg font-medium transition-colors min-h-touch"
                 >
                   💰 Vender
                 </button>

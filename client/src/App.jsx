@@ -6,6 +6,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { Login } from './components/Login';
 import NavBar from './components/NavBar';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
 
 // Lazy loading para páginas
 const AssignCharacterPage = lazy(() => import('./pages/AssignCharacterPage'));
@@ -110,10 +111,12 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <div className="App">
-          <NavBar />
-          <AppRoutes />
-        </div>
+        <SocketProvider>
+          <div className="App">
+            <NavBar />
+            <AppRoutes />
+          </div>
+        </SocketProvider>
       </AuthProvider>
     </BrowserRouter>
   );

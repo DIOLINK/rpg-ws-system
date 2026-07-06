@@ -1,63 +1,30 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { io } from 'socket.io-client';
-import { authService } from '../utils/authService';
+import { useSocket } from '../context/SocketContext';
+import { apiFetch } from '../utils/apiFetch';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
-const SOCKET_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:5001';
 
 export const useGameLobby = (user) => {
   const navigate = useNavigate();
+  const { connected, on, off } = useSocket();
   const [games, setGames] = useState([]);
   const [newGameName, setNewGameName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(true);
-  const socket = useRef(null);
-
-  // Conectar socket para actualizaciones en tiempo real
-  useEffect(() => {
-    const token = authService.getToken();
-    if (!token || !user) return;
-
-    socket.current = io(SOCKET_URL, {
-      auth: { token },
-    });
-
-    socket.current.on('connect', () => {
-      console.log('🔌 Socket de lobby conectado');
-      socket.current.emit('join-user-channel');
-    });
-
-    // Evento cuando un jugador se une a una partida del DM
-    socket.current.on('player-joined', ({ userId, gameId }) => {
-      console.log('📥 player-joined:', { userId, gameId });
-      // Refrescar lista de partidas
-      fetchGames();
-    });
-
-    // Evento cuando se actualiza una partida
-    socket.current.on('game-updated', (updatedGame) => {
-      console.log('📥 game-updated:', updatedGame);
-      setGames((prev) =>
-        prev.map((g) =>
-          g._id === updatedGame._id ? { ...g, ...updatedGame } : g,
-        ),
-      );
-    });
-
-    return () => {
-      socket.current?.disconnect();
-    };
-  }, [user]);
+  const [selectGames, setSelectGames] = useState(null);
 
   const fetchGames = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/game/my-games`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      setGames(data);
+      const response = await apiFetch(
+        `${API_BASE_URL}/game/my-games`,
+        {},
+        () => {},
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setGames(data);
+      }
       setLoading(false);
     } catch (error) {
       console.error('Error fetching games:', error);
@@ -68,6 +35,31 @@ export const useGameLobby = (user) => {
   useEffect(() => {
     fetchGames();
   }, []);
+
+  // Lobby-specific socket listeners
+  useEffect(() => {
+    if (!connected) return;
+
+    const onPlayerJoined = () => {
+      fetchGames();
+    };
+
+    const onGameUpdated = (updatedGame) => {
+      setGames((prev) =>
+        prev.map((g) =>
+          g._id === updatedGame._id ? { ...g, ...updatedGame } : g,
+        ),
+      );
+    };
+
+    on('player-joined', onPlayerJoined);
+    on('game-updated', onGameUpdated);
+
+    return () => {
+      off('player-joined', onPlayerJoined);
+      off('game-updated', onGameUpdated);
+    };
+  }, [connected, on, off]);
 
   const createGame = async () => {
     if (!newGameName) return;
@@ -89,8 +81,6 @@ export const useGameLobby = (user) => {
       console.error('Error creating game:', error);
     }
   };
-
-  const [selectGames, setSelectGames] = useState(null);
 
   const joinGame = async (gameId = joinCode) => {
     if (!gameId) return;

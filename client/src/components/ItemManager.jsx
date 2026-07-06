@@ -293,7 +293,7 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
   };
 
   const renderTabs = () => (
-    <div className="flex gap-2 mb-4 border-b border-gray-700 pb-2 overflow-x-auto">
+    <div className="flex gap-2 mb-4 border-b border-gray-700 pb-2 overflow-x-auto scroll-x-mobile">
       {[
         { id: 'catalog', label: '📦 Catálogo', icon: '📦' },
         { id: 'create', label: '➕ Crear Item', icon: '➕' },
@@ -309,10 +309,10 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
             setError('');
             if (tab.id === 'create') resetForm();
           }}
-          className={`px-4 py-2 rounded-t-lg transition-colors whitespace-nowrap ${
+          className={`px-4 py-2 rounded-t-lg transition-colors whitespace-nowrap min-h-touch ${
             activeTab === tab.id
               ? 'bg-purple-600 text-white'
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500'
           }`}
         >
           {tab.label}
@@ -376,7 +376,7 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
       </div>
 
       {/* Lista de items */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto">
         {filteredItems.map((item) => {
           const typeInfo = getItemTypeInfo(item.type);
           const rarityInfo = getRarityInfo(item.rarity);
@@ -411,14 +411,14 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex gap-1 flex-shrink-0">
                   {/* Botón duplicar (siempre visible) */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDuplicate(item);
                     }}
-                    className="text-green-400 hover:text-green-300 p-1"
+                    className="text-green-400 hover:text-green-300 active:text-green-200 p-2 min-h-touch min-w-touch"
                     title="Usar como plantilla"
                   >
                     📋
@@ -431,7 +431,7 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
                           e.stopPropagation();
                           handleEdit(item);
                         }}
-                        className="text-blue-400 hover:text-blue-300 p-1"
+                        className="text-blue-400 hover:text-blue-300 active:text-blue-200 p-2 min-h-touch min-w-touch"
                         title="Editar"
                       >
                         ✏️
@@ -441,7 +441,7 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
                           e.stopPropagation();
                           handleDelete(item._id);
                         }}
-                        className="text-red-400 hover:text-red-300 p-1"
+                        className="text-red-400 hover:text-red-300 active:text-red-200 p-2 min-h-touch min-w-touch"
                         title="Eliminar"
                       >
                         🗑️
@@ -663,7 +663,7 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
       <div className="flex gap-3 pt-4">
         <button
           type="submit"
-          className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors"
+          className="px-4 py-3 bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white rounded-lg transition-colors min-h-touch"
         >
           {editingItem ? '💾 Guardar cambios' : '➕ Crear item'}
         </button>
@@ -671,7 +671,7 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
           <button
             type="button"
             onClick={resetForm}
-            className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors"
+            className="px-4 py-3 bg-gray-600 hover:bg-gray-500 active:bg-gray-700 text-white rounded-lg transition-colors min-h-touch"
           >
             Cancelar
           </button>
@@ -775,7 +775,7 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
       <button
         onClick={handleAssign}
         disabled={selectedItems.length === 0 || selectedCharacters.length === 0}
-        className="w-full py-3 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
+        className="w-full py-3 bg-green-600 hover:bg-green-500 active:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium min-h-touch"
       >
         🎁 Asignar {selectedItems.length} item(s) a {selectedCharacters.length}{' '}
         personaje(s)
@@ -1006,7 +1006,7 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
         <button
           onClick={handleSendShopOffer}
           disabled={shopSelectedItems.length === 0 || !shopSelectedCharacter}
-          className="w-full py-3 bg-yellow-600 hover:bg-yellow-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
+          className="w-full py-3 bg-yellow-600 hover:bg-yellow-500 active:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium min-h-touch"
         >
           📨 Enviar Oferta ({shopSelectedItems.length} item
           {shopSelectedItems.length !== 1 ? 's' : ''})
@@ -1143,14 +1143,14 @@ const ItemManager = ({ characters, gameId, onItemAssigned }) => {
           <button
             onClick={() => handleModifyGold(true)}
             disabled={!goldCharacter || goldAmount <= 0}
-            className="flex-1 py-3 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
+            className="flex-1 py-3 bg-green-600 hover:bg-green-500 active:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium min-h-touch"
           >
             ➕ Añadir Oro
           </button>
           <button
             onClick={() => handleModifyGold(false)}
             disabled={!goldCharacter || goldAmount <= 0}
-            className="flex-1 py-3 bg-red-600 hover:bg-red-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
+            className="flex-1 py-3 bg-red-600 hover:bg-red-500 active:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium min-h-touch"
           >
             ➖ Quitar Oro
           </button>

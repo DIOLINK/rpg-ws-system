@@ -110,7 +110,7 @@ export function DMTurnOrderPanel({
             console.log('Calculating turn order...')
           )}
           disabled={loading}
-          className="w-full py-2 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-sm transition-colors mb-4"
+          className="w-full py-3 bg-gray-700 hover:bg-gray-600 active:bg-gray-800 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg text-sm transition-colors mb-4 min-h-touch"
         >
           🔄 Recalcular Iniciativa
         </button>
@@ -121,7 +121,7 @@ export function DMTurnOrderPanel({
             console.log('Calculating turn order...')
           )}
           disabled={loading || characters.length === 0}
-          className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors mb-4"
+          className="w-full py-3 bg-purple-600 hover:bg-purple-700 active:bg-purple-500 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors mb-4 min-h-touch"
         >
           🎲 Calcular Iniciativa
         </button>
@@ -143,14 +143,14 @@ export function DMTurnOrderPanel({
             <button
               onClick={() => onNextTurn()}
               disabled={loading}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded-lg font-medium transition-colors"
+              className="px-4 py-3 bg-green-600 hover:bg-green-700 active:bg-green-500 disabled:bg-gray-600 rounded-lg font-medium transition-colors min-h-touch"
             >
               ⏭️
             </button>
             <button
               onClick={() => onEndCombat()}
               disabled={loading}
-              className="ml-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 rounded-lg font-medium transition-colors"
+              className="ml-2 px-4 py-3 bg-red-600 hover:bg-red-700 active:bg-red-500 disabled:bg-gray-600 rounded-lg font-medium transition-colors min-h-touch"
             >
               🔚
             </button>
@@ -194,7 +194,7 @@ export function DMTurnOrderPanel({
                     (DEX: {entry.initiative})
                   </span>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex gap-1 flex-shrink-0">
                   {entry.isKO ? (
                     <span className="text-xs text-red-400 px-2">KO</span>
                   ) : idx !== currentTurnIndex ? (
@@ -202,7 +202,7 @@ export function DMTurnOrderPanel({
                       <button
                         onClick={() => onForceTurn(entry.characterId)}
                         disabled={loading}
-                        className="px-2 py-1 bg-yellow-600/50 hover:bg-yellow-600 rounded text-xs transition-colors"
+                        className="px-2 py-2 bg-yellow-600/50 hover:bg-yellow-600 active:bg-yellow-500 rounded text-xs transition-colors min-h-touch min-w-touch"
                         title="Forzar turno"
                       >
                         🎯
@@ -210,7 +210,7 @@ export function DMTurnOrderPanel({
                       <button
                         onClick={() => onRemoveFromTurnOrder(entry.characterId)}
                         disabled={loading}
-                        className="px-2 py-1 bg-red-600/50 hover:bg-red-600 rounded text-xs transition-colors"
+                        className="px-2 py-2 bg-red-600/50 hover:bg-red-600 active:bg-red-500 rounded text-xs transition-colors min-h-touch min-w-touch"
                         title="Remover del combate"
                       >
                         ✖️
@@ -276,7 +276,7 @@ export function DMTurnOrderPanel({
                         }
                       }}
                       disabled={loading || !onReviveCharacter}
-                      className="px-3 py-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded text-xs font-medium transition-colors"
+                      className="px-3 py-2 bg-green-600 hover:bg-green-700 active:bg-green-500 disabled:bg-gray-600 rounded text-xs font-medium transition-colors min-h-touch"
                     >
                       ✨ Revivir
                     </button>
@@ -357,7 +357,7 @@ export function DMTurnOrderPanel({
                   <button
                     onClick={() => handleResolveTie(groupIdx, group)}
                     disabled={loading}
-                    className="mt-2 w-full py-1 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 rounded text-xs font-medium transition-colors"
+                    className="mt-2 w-full py-2 bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-500 disabled:bg-gray-600 rounded text-xs font-medium transition-colors min-h-touch"
                   >
                     ✅ Aplicar Orden
                   </button>
@@ -372,7 +372,7 @@ export function DMTurnOrderPanel({
         <div className="border-t border-gray-700 pt-4">
           <button
             onClick={() => setShowAddCharacter(!showAddCharacter)}
-            className="w-full py-2 bg-blue-600/50 hover:bg-blue-600 rounded-lg text-sm font-medium transition-colors mb-2"
+            className="w-full py-3 bg-blue-600/50 hover:bg-blue-600 active:bg-blue-500 rounded-lg text-sm font-medium transition-colors mb-2 min-h-touch"
           >
             {showAddCharacter ? '➖ Cerrar' : '➕ Agregar al Combate'}
           </button>
@@ -401,7 +401,7 @@ export function DMTurnOrderPanel({
                         setShowAddCharacter(false);
                       }}
                       disabled={loading}
-                      className="px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs transition-colors"
+                      className="px-3 py-2 bg-green-600 hover:bg-green-700 active:bg-green-500 rounded text-xs transition-colors min-h-touch"
                     >
                       ➕ Agregar
                     </button>

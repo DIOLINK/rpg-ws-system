@@ -31,7 +31,7 @@ const CharacterManagement = () => {
 
   const handleAssignGameId = (gameId) => {
     if (gameId && selectedCharacterId) {
-      window.location.href = `/game/${gameId}/assign-character`;
+      window.location.href = `/assign-character/${gameId}`;
     }
   };
   return (

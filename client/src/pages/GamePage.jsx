@@ -22,7 +22,7 @@ const TurnAlert = ({ koAlert, statusEffectsApplied, onDismiss }) => {
   if (!koAlert && !statusEffectsApplied) return null;
 
   return (
-    <div className="fixed top-20 right-4 z-50 space-y-2 max-w-sm">
+    <div className="fixed top-16 sm:top-20 right-2 sm:right-4 z-50 space-y-2 max-w-[calc(100vw-1rem)] sm:max-w-sm">
       {/* Alerta de KO */}
       {koAlert && (
         <div
@@ -425,7 +425,7 @@ export const GamePage = () => {
                 <div className="space-y-2">
                   <button
                     onClick={() => globalThis.location.reload()}
-                    className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs sm:text-sm transition-colors"
+                    className="w-full py-3 bg-gray-700 hover:bg-gray-600 active:bg-gray-800 rounded-lg text-xs sm:text-sm transition-colors min-h-touch"
                   >
                     🔄 Recargar
                   </button>
@@ -435,7 +435,7 @@ export const GamePage = () => {
                         ? navigator.share({ title: 'RPG Game', text: gameId })
                         : navigator.clipboard.writeText(gameId)
                     }
-                    className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs sm:text-sm transition-colors"
+                    className="w-full py-3 bg-gray-700 hover:bg-gray-600 active:bg-gray-800 rounded-lg text-xs sm:text-sm transition-colors min-h-touch"
                   >
                     📤 Compartir ID
                   </button>

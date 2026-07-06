@@ -298,7 +298,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
   };
 
   const renderTabs = () => (
-    <div className="flex gap-2 mb-4 border-b border-gray-700 pb-2">
+    <div className="flex gap-2 mb-4 border-b border-gray-700 pb-2 overflow-x-auto scroll-x-mobile">
       {[
         { id: 'spawn', label: '👹 Invocar NPC' },
         {
@@ -310,10 +310,10 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
         <button
           key={tab.id}
           onClick={() => setActiveTab(tab.id)}
-          className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+          className={`px-3 py-2 rounded text-sm font-medium transition-colors whitespace-nowrap min-h-touch ${
             activeTab === tab.id
               ? 'bg-purple-600 text-white'
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600 active:bg-gray-500'
           }`}
         >
           {tab.label}
@@ -343,7 +343,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
               >
                 {config.icon} {config.label}s
               </h4>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {typeTemplates.map((template) => (
                   <div
                     key={template._id}
@@ -361,10 +361,10 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-shrink-0">
                       <button
                         onClick={() => setSelectedTemplate(template)}
-                        className="p-1 text-gray-400 hover:text-white"
+                        className="p-2 text-gray-400 hover:text-white active:text-gray-200 min-h-touch min-w-touch"
                         title="Ver detalles"
                       >
                         👁️
@@ -372,7 +372,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
                       {!template.isGlobal && (
                         <button
                           onClick={() => handleDeleteTemplate(template)}
-                          className="p-1 text-gray-400 hover:text-red-400"
+                          className="p-2 text-gray-400 hover:text-red-400 active:text-red-300 min-h-touch min-w-touch"
                           title="Eliminar plantilla"
                         >
                           🗑️
@@ -380,7 +380,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
                       )}
                       <button
                         onClick={() => handleSpawnNPC(template)}
-                        className="px-2 py-1 bg-purple-600 hover:bg-purple-500 rounded text-xs font-medium"
+                        className="px-3 py-2 bg-purple-600 hover:bg-purple-500 active:bg-purple-700 rounded text-xs font-medium min-h-touch"
                         title="Invocar"
                       >
                         ⚡
@@ -449,31 +449,31 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <button
                       onClick={() => handleAddToTurnOrder(npc)}
-                      className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-sm"
+                      className="px-3 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 rounded text-sm min-h-touch"
                       title="Añadir a orden de turnos"
                     >
                       🎯
                     </button>
                     <button
                       onClick={() => setSelectedNPC(npc)}
-                      className="px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm"
+                      className="px-3 py-2 bg-gray-600 hover:bg-gray-500 active:bg-gray-700 rounded text-sm min-h-touch"
                       title="Ver ficha"
                     >
                       📋
                     </button>
                     <button
                       onClick={() => handleKillNPC(npc)}
-                      className="px-2 py-1 bg-red-600 hover:bg-red-500 rounded text-sm"
+                      className="px-3 py-2 bg-red-600 hover:bg-red-500 active:bg-red-700 rounded text-sm min-h-touch"
                       title="Matar (dropea loot)"
                     >
                       ☠️
                     </button>
                     <button
                       onClick={() => setNpcToDelete(npc)}
-                      className="px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm"
+                      className="px-3 py-2 bg-gray-600 hover:bg-gray-500 active:bg-gray-700 rounded text-sm min-h-touch"
                       title="Eliminar sin loot"
                     >
                       🗑️
@@ -659,7 +659,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
                 handleSpawnNPC(t);
                 setSelectedTemplate(null);
               }}
-              className="w-full bg-purple-600 hover:bg-purple-500 py-2 rounded font-medium"
+              className="w-full bg-purple-600 hover:bg-purple-500 active:bg-purple-700 py-3 rounded font-medium min-h-touch"
             >
               ⚡ Invocar {t.name}
             </button>
@@ -792,13 +792,13 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
                 handleKillNPC(npc);
                 setSelectedNPC(null);
               }}
-              className="flex-1 bg-red-600 hover:bg-red-500 py-2 rounded font-medium"
+              className="flex-1 bg-red-600 hover:bg-red-500 active:bg-red-700 py-3 rounded font-medium min-h-touch"
             >
               ☠️ Matar
             </button>
             <button
               onClick={() => setSelectedNPC(null)}
-              className="flex-1 bg-gray-600 hover:bg-gray-500 py-2 rounded font-medium"
+              className="flex-1 bg-gray-600 hover:bg-gray-500 active:bg-gray-700 py-3 rounded font-medium min-h-touch"
             >
               Cerrar
             </button>
@@ -883,7 +883,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
                 setShowLootModal(false);
                 setLootData(null);
               }}
-              className="w-full bg-gray-600 hover:bg-gray-500 py-2 rounded font-medium"
+              className="w-full bg-gray-600 hover:bg-gray-500 active:bg-gray-700 py-3 rounded font-medium min-h-touch"
             >
               Cerrar (sin dar loot)
             </button>
@@ -909,7 +909,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
           <div className="p-4 flex gap-2 border-t border-gray-700">
             <button
               onClick={() => setNpcToDelete(null)}
-              className="flex-1 bg-gray-600 hover:bg-gray-500 py-2 rounded font-medium"
+              className="flex-1 bg-gray-600 hover:bg-gray-500 active:bg-gray-700 py-3 rounded font-medium min-h-touch"
             >
               Cancelar
             </button>
@@ -918,7 +918,7 @@ export default function NPCManager({ gameId, characters, onRefresh, socket }) {
                 await handleDeleteNPC(npcToDelete);
                 setNpcToDelete(null);
               }}
-              className="flex-1 bg-red-600 hover:bg-red-500 py-2 rounded font-medium text-white"
+              className="flex-1 bg-red-600 hover:bg-red-500 active:bg-red-700 py-3 rounded font-medium text-white min-h-touch"
             >
               Eliminar
             </button>

@@ -115,7 +115,7 @@ export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
                 </div>
                 <div className="flex gap-3 justify-center">
                   <button
-                    className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-semibold text-white flex items-center gap-2 transition-colors shadow-md"
+                    className="px-4 py-3 bg-green-600 hover:bg-green-500 active:bg-green-700 rounded-lg text-sm font-semibold text-white flex items-center gap-2 transition-colors shadow-md min-h-touch"
                     onClick={() =>
                       onDMCommand('validate-character', {
                         characterId: char._id,
@@ -126,7 +126,7 @@ export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
                     <span className="text-lg">✓</span> Aprobar
                   </button>
                   <button
-                    className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-semibold text-white flex items-center gap-2 transition-colors shadow-md"
+                    className="px-4 py-3 bg-red-600 hover:bg-red-500 active:bg-red-700 rounded-lg text-sm font-semibold text-white flex items-center gap-2 transition-colors shadow-md min-h-touch"
                     onClick={() =>
                       onDMCommand('validate-character', {
                         characterId: char._id,
@@ -172,7 +172,7 @@ export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
           disabled={
             selectedCharacters.length === 0 || xpAmount <= 0 || xpLoading
           }
-          className="w-full py-2 sm:py-3 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-medium transition-colors text-sm sm:text-base"
+          className="w-full py-3 bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-400 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-medium transition-colors text-sm sm:text-base min-h-touch"
         >
           ✨ Asignar {xpAmount || 0} XP
         </button>
@@ -207,7 +207,7 @@ export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
         <button
           onClick={applyDamage}
           disabled={selectedCharacters.length === 0 || damage <= 0}
-          className="w-full py-2 sm:py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-medium transition-colors text-sm sm:text-base"
+          className="w-full py-3 bg-red-600 hover:bg-red-700 active:bg-red-500 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-medium transition-colors text-sm sm:text-base min-h-touch"
         >
           💥 Aplicar {damage || 0} daño
         </button>
@@ -229,7 +229,7 @@ export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
                     type="checkbox"
                     checked={selectedCharacters.includes(character._id)}
                     onChange={() => toggleCharacter(character._id)}
-                    className="w-5 h-5 rounded cursor-pointer"
+                    className="w-5 h-5 rounded cursor-pointer accent-purple-500"
                   />
                   <div>
                     <span className="font-medium text-sm sm:text-base">
@@ -303,7 +303,7 @@ export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
 
                   <button
                     onClick={() => addAbility(character._id)}
-                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm font-medium transition-colors"
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-500 rounded text-sm font-medium transition-colors min-h-touch"
                   >
                     ➕ Habilidad
                   </button>
@@ -355,7 +355,7 @@ export const DMPanel = memo(function DMPanel({ characters, onDMCommand }) {
                   />
                   <button
                     onClick={() => addStatus(character._id)}
-                    className="px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded text-sm font-medium transition-colors"
+                    className="px-3 py-2 bg-purple-600 hover:bg-purple-700 active:bg-purple-500 rounded text-sm font-medium transition-colors min-h-touch"
                   >
                     ✨ Estado
                   </button>

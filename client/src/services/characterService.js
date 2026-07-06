@@ -1,17 +1,17 @@
+import { apiFetch } from '../utils/apiFetch';
+
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 export const characterService = {
-  async assignToGame(characterId, gameId, token) {
-    const res = await fetch(
+  async assignToGame(characterId, gameId) {
+    const res = await apiFetch(
       `${API_URL}/game/games/${gameId}/assign-character`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ characterId }),
-      }
+      },
+      null,
+      { useCache: false },
     );
     if (!res.ok)
       throw new Error(
@@ -19,55 +19,59 @@ export const characterService = {
       );
     return res.json();
   },
-  async getAll(token) {
-    const res = await fetch(`${API_URL}/characters`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+  async getAll() {
+    const res = await apiFetch(`${API_URL}/characters`);
     if (!res.ok) throw new Error('Error al obtener personajes');
     return res.json();
   },
-  async create(character, token) {
-    const res = await fetch(`${API_URL}/characters`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+  async create(character) {
+    const res = await apiFetch(
+      `${API_URL}/characters`,
+      {
+        method: 'POST',
+        body: JSON.stringify(character),
       },
-      body: JSON.stringify(character),
-    });
+      null,
+      { useCache: false },
+    );
     if (!res.ok)
       throw new Error((await res.json()).error || 'Error al crear personaje');
     return res.json();
   },
-  async update(id, data, token) {
-    const res = await fetch(`${API_URL}/characters/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+  async update(id, data) {
+    const res = await apiFetch(
+      `${API_URL}/characters/${id}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
       },
-      body: JSON.stringify(data),
-    });
+      null,
+      { useCache: false },
+    );
     if (!res.ok)
       throw new Error((await res.json()).error || 'Error al editar personaje');
     return res.json();
   },
-  async remove(id, token) {
-    const res = await fetch(`${API_URL}/characters/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    });
+  async remove(id) {
+    const res = await apiFetch(
+      `${API_URL}/characters/${id}`,
+      { method: 'DELETE' },
+      null,
+      { useCache: false },
+    );
     if (!res.ok)
       throw new Error(
         (await res.json()).error || 'Error al eliminar personaje'
       );
     return res.json();
   },
-  async sendToValidation(id, token) {
-    const res = await fetch(`${API_URL}/characters/${id}/send`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    });
+  async sendToValidation(id) {
+    const res = await apiFetch(
+      `${API_URL}/characters/${id}/send`,
+      { method: 'POST' },
+      null,
+      { useCache: false },
+    );
     if (!res.ok)
       throw new Error(
         (await res.json()).error || 'Error al enviar a validación'

@@ -39,7 +39,7 @@ const InventoryList = memo(function InventoryList({
               <button
                 type="button"
                 onClick={selectAllItems}
-                className="text-xs text-purple-400 hover:text-purple-300"
+                className="text-xs text-purple-400 hover:text-purple-300 active:text-purple-200 p-1 min-h-touch min-w-touch"
                 title={
                   selectedItems.length === inventory?.length
                     ? 'Deseleccionar todo'
@@ -53,7 +53,7 @@ const InventoryList = memo(function InventoryList({
                   type="button"
                   onClick={handleRemoveItems}
                   disabled={removingItems}
-                  className="text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded disabled:opacity-50"
+                  className="text-xs bg-red-600 hover:bg-red-500 active:bg-red-700 text-white px-2 py-2 rounded disabled:opacity-50 min-h-touch"
                   title={`Eliminar ${selectedItems.length} item(s)`}
                 >
                   {removingItems ? '...' : `🗑️ ${selectedItems.length}`}
@@ -139,14 +139,14 @@ const InventoryList = memo(function InventoryList({
 
                   {/* Botones de acción para jugador (no DM) */}
                   {!isDM && (
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-shrink-0">
                       {/* Equipar/Desequipar */}
                       {item.equippable &&
                         (item.equipped ? (
                           <button
                             type="button"
                             onClick={() => handleUnequipItem(item.id)}
-                            className="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded"
+                            className="text-xs bg-gray-600 hover:bg-gray-500 active:bg-gray-700 text-white px-2 py-2 rounded min-h-touch min-w-touch"
                             title="Desequipar"
                           >
                             ❌
@@ -156,7 +156,7 @@ const InventoryList = memo(function InventoryList({
                             type="button"
                             onClick={() => handleEquipItem(item.id)}
                             disabled={equippedCount >= 5}
-                            className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="text-xs bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white px-2 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed min-h-touch min-w-touch"
                             title={
                               equippedCount >= 5
                                 ? 'Máximo 5 items equipados'
@@ -191,7 +191,7 @@ const InventoryList = memo(function InventoryList({
                                 message: `Intentando consumir ${item.name}`,
                               });
                             }}
-                            className="text-xs bg-green-600 hover:bg-green-500 text-white px-2 py-1 rounded"
+                            className="text-xs bg-green-600 hover:bg-green-500 active:bg-green-700 text-white px-2 py-2 rounded min-h-touch min-w-touch"
                             title={`Consumir (${item.name})`}
                           >
                             🍶 Usar
@@ -212,7 +212,7 @@ const InventoryList = memo(function InventoryList({
                             <button
                               type="button"
                               onClick={() => handleSellItem(item)}
-                              className="text-xs bg-yellow-600 hover:bg-yellow-500 text-white px-2 py-1 rounded"
+                              className="text-xs bg-yellow-600 hover:bg-yellow-500 active:bg-yellow-700 text-white px-2 py-2 rounded min-h-touch min-w-touch"
                               title={`Vender por ${unitValue} oro`}
                             >
                               💰

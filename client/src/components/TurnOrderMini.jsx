@@ -6,11 +6,11 @@
  */
 export default function TurnOrderMini({ turnOrder, onClickCharacter }) {
   return (
-    <div className="bg-gray-900 rounded-lg px-3 py-2 flex items-center gap-2 shadow-md border border-gray-700">
+    <div className="bg-gray-900 rounded-lg px-3 py-2 flex items-center gap-2 shadow-md border border-gray-700 overflow-x-auto scroll-x-mobile max-w-full">
       {turnOrder.map((char, idx) => (
         <button
           key={char.id}
-          className={`flex flex-col items-center px-2 py-1 rounded transition-all
+          className={`flex flex-col items-center px-2 py-1 rounded transition-all flex-shrink-0
             ${char.isCurrent ? 'bg-purple-700 text-white scale-110 shadow-lg' : 'bg-gray-800 text-gray-300'}
             ${char.isYou ? 'ring-2 ring-green-400' : ''}
             ${char.isPlayer ? '' : 'opacity-80'}`}

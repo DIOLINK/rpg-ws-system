@@ -8,6 +8,15 @@ export default {
           200: '#FADADD',
         },
       },
+      padding: {
+        'safe-top': 'env(safe-area-inset-top)',
+        'safe-bottom': 'env(safe-area-inset-bottom)',
+        'safe-left': 'env(safe-area-inset-left)',
+        'safe-right': 'env(safe-area-inset-right)',
+      },
+      minHeight: {
+        touch: '44px',
+      },
     },
   },
   plugins: [],
