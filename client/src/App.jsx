@@ -10,6 +10,9 @@ import { SocketProvider } from './context/SocketContext';
 
 // Lazy loading para páginas
 const AssignCharacterPage = lazy(() => import('./pages/AssignCharacterPage'));
+const BecomeDMPage = lazy(() =>
+  import('./pages/BecomeDMPage').then((m) => ({ default: m.BecomeDMPage })),
+);
 const CreateCharacterPage = lazy(() => import('./pages/CreateCharacterPage'));
 const ErrorPage = lazy(() => import('./pages/ErrorPage'));
 const GameLobby = lazy(() =>
@@ -96,6 +99,14 @@ function AppRoutes() {
             element={
               <PrivateRoute>
                 <AssignCharacterPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/become-dm"
+            element={
+              <PrivateRoute>
+                <BecomeDMPage />
               </PrivateRoute>
             }
           />

@@ -217,6 +217,42 @@ router.post('/make-dm/:userId', authenticateUser, async (req, res) => {
   }
 });
 
+// Hacerse DM uno mismo (requiere clave secreta)
+router.post('/become-dm', authenticateUser, async (req, res) => {
+  try {
+    const { secretKey } = req.body;
+    const expectedKey = process.env.DM_SECRET_KEY;
+
+    if (!expectedKey) {
+      return res.status(500).json({ error: 'DM_SECRET_KEY no configurada en el servidor' });
+    }
+
+    if (secretKey !== expectedKey) {
+      return res.status(403).json({ error: 'Clave secreta incorrecta' });
+    }
+
+    if (req.user.isDM) {
+      return res.status(400).json({ error: 'Ya eres DM' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    user.isDM = true;
+    await user.save();
+
+    // Invalidar caché del usuario
+    const { default: authMiddleware } = await import('../middleware/auth.js');
+    if (authMiddleware.userCache) {
+      authMiddleware.userCache.delete(user.googleId);
+    }
+
+    res.json({ message: 'Ahora eres DM', user: { _id: user._id, name: user.name, isDM: true } });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Ruta para crear un personaje
 router.post('/characters', authenticateUser, async (req, res) => {
   try {
