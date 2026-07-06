@@ -2,7 +2,7 @@ import admin from '../../config/firebaseAdmin.js';
 import { User } from '../models/User.js';
 
 // Caché de usuarios en memoria para reducir queries a la BD
-const userCache = new Map();
+export const userCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
 // Limpiar caché periódicamente

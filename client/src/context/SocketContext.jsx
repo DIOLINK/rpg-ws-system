@@ -32,7 +32,8 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     if (!user) return;
 
-    const socket = io(import.meta.env.VITE_API_URL || window.location.origin, {
+    const socketUrl = import.meta.env.VITE_BASE_URL || window.location.origin;
+    const socket = io(socketUrl, {
       auth: { token: localStorage.getItem('token') },
       transports: ['websocket', 'polling'],
     });

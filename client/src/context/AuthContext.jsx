@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import PropTypes from 'prop-types';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../utils/apiFetch';
 import { authService } from '../utils/authService';
 
@@ -14,6 +14,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -26,14 +27,10 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        navigate('/lobby'); // Redirigir al lobby si el usuario está autenticado
-      } else {
-        navigate('/login'); // Redirigir al login si no está autenticado
-      }
+    if (!loading && user && location.pathname === '/login') {
+      navigate('/lobby');
     }
-  }, [user]);
+  }, [user, loading, location.pathname]);
 
   const fetchUser = async (token) => {
     try {

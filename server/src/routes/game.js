@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticateUser } from '../middleware/auth.js';
+import { authenticateUser, userCache } from '../middleware/auth.js';
 import { Character } from '../models/Character.js';
 import { Game } from '../models/Game.js';
 import { User } from '../models/User.js';
@@ -242,10 +242,7 @@ router.post('/become-dm', authenticateUser, async (req, res) => {
     await user.save();
 
     // Invalidar caché del usuario
-    const { default: authMiddleware } = await import('../middleware/auth.js');
-    if (authMiddleware.userCache) {
-      authMiddleware.userCache.delete(user.googleId);
-    }
+    userCache.delete(user.googleId);
 
     res.json({ message: 'Ahora eres DM', user: { _id: user._id, name: user.name, isDM: true } });
   } catch (error) {
