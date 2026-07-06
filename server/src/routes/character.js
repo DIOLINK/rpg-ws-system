@@ -224,22 +224,4 @@ router.delete('/:id', authenticateUser, async (req, res) => {
   }
 });
 
-// Enviar personaje a validación (solo si es del usuario y no está validado)
-router.post('/:id/send', authenticateUser, async (req, res) => {
-  try {
-    const userId = req.user._id;
-    const { id } = req.params;
-    const character = await Character.findOne({ _id: id, playerId: userId });
-    if (!character)
-      return res.status(404).json({ error: 'Personaje no encontrado.' });
-    if (character.validated)
-      return res.status(400).json({ error: 'El personaje ya está validado.' });
-    character.validated = false; // Marca como pendiente
-    await character.save();
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 export default router;

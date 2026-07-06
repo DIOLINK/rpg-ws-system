@@ -10,6 +10,7 @@ import gameRoutes from './routes/game.js';
 import { createItemRoutes } from './routes/item.js';
 import npcRoutes from './routes/npc.js';
 import { setupGameSockets } from './socket/gameSocket.js';
+import { performanceMonitor } from './utils/performanceMonitor.js';
 
 // Configurar dotenv para cargar el archivo .env desde la ubicación correcta
 import dotenv from 'dotenv';
@@ -34,6 +35,9 @@ app.use(
 );
 app.use(express.json());
 
+// Performance monitoring middleware
+app.use(performanceMonitor.requestTracker());
+
 // Conectar a DB
 connectDB();
 
@@ -56,10 +60,18 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date() });
 });
 
+// Performance metrics endpoint
+app.get('/api/metrics', (req, res) => {
+  const systemMetrics = performanceMonitor.getSystemMetrics();
+  const appMetrics = performanceMonitor.getAppMetrics();
+  res.json({ system: systemMetrics, app: appMetrics });
+});
+
 const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+  // Start auto-monitoring (reports every 5 minutes)
+  performanceMonitor.startAutoMonitoring(300);
 });
 
-// Verificar si FRONTEND_URL está definido
 console.log('FRONTEND_URL:', process.env.FRONTEND_URL);

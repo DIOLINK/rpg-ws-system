@@ -34,9 +34,9 @@ router.post('/join/:gameId', authenticateUser, async (req, res) => {
     const { gameId } = req.params;
     let games = [];
     if (gameId.length < 24) {
-      // Buscar partidas cuyo _id termine con los caracteres dados
-      games = await Game.find({});
-      games = games.filter((g) => g._id.toString().endsWith(gameId));
+      // Buscar partidas cuyo _id termine con los caracteres dados usando regex
+      const suffixRegex = new RegExp(`${gameId}$`);
+      games = await Game.find({ _id: suffixRegex }).lean();
     } else {
       const game = await Game.findById(gameId);
       if (game) games = [game];
@@ -199,10 +199,12 @@ router.get('/:gameId', authenticateUser, async (req, res) => {
   }
 });
 
-// Hacer a un usuario DM (ruta de admin)
+// Hacer a un usuario DM (solo admin)
 router.post('/make-dm/:userId', authenticateUser, async (req, res) => {
   try {
-    // Solo para desarrollo - en producción esto debería ser más seguro
+    if (!req.user.isDM) {
+      return res.status(403).json({ error: 'Solo los DM pueden asignar DM' });
+    }
     const user = await User.findById(req.params.userId);
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
@@ -216,10 +218,15 @@ router.post('/make-dm/:userId', authenticateUser, async (req, res) => {
 });
 
 // Ruta para crear un personaje
-router.post('/characters', async (req, res) => {
+router.post('/characters', authenticateUser, async (req, res) => {
   try {
     const { name, classType, level } = req.body;
-    const newCharacter = await Character.create({ name, classType, level });
+    const newCharacter = await Character.create({
+      name,
+      classType,
+      level,
+      playerId: req.user._id,
+    });
     res.status(201).json(newCharacter);
   } catch (error) {
     res.status(500).json({ error: 'Error al crear el personaje' });
@@ -227,16 +234,26 @@ router.post('/characters', async (req, res) => {
 });
 
 // Ruta para modificar un personaje
-router.put('/characters/:id', async (req, res) => {
+router.put('/characters/:id', authenticateUser, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
+
+    const character = await Character.findById(id);
+    if (!character) {
+      return res.status(404).json({ error: 'Personaje no encontrado' });
+    }
+
+    // Solo el dueño o un DM pueden modificar
+    const isOwner = character.playerId.toString() === req.user._id.toString();
+    const isDM = req.user.isDM;
+    if (!isOwner && !isDM) {
+      return res.status(403).json({ error: 'No autorizado para modificar este personaje' });
+    }
+
     const updatedCharacter = await Character.findByIdAndUpdate(id, updates, {
       new: true,
     });
-    if (!updatedCharacter) {
-      return res.status(404).json({ error: 'Personaje no encontrado' });
-    }
     res.json(updatedCharacter);
   } catch (error) {
     res.status(500).json({ error: 'Error al actualizar el personaje' });
@@ -244,13 +261,23 @@ router.put('/characters/:id', async (req, res) => {
 });
 
 // Ruta para borrar un personaje
-router.delete('/characters/:id', async (req, res) => {
+router.delete('/characters/:id', authenticateUser, async (req, res) => {
   try {
     const { id } = req.params;
-    const deletedCharacter = await Character.findByIdAndDelete(id);
-    if (!deletedCharacter) {
+
+    const character = await Character.findById(id);
+    if (!character) {
       return res.status(404).json({ error: 'Personaje no encontrado' });
     }
+
+    // Solo el dueño o un DM pueden eliminar
+    const isOwner = character.playerId.toString() === req.user._id.toString();
+    const isDM = req.user.isDM;
+    if (!isOwner && !isDM) {
+      return res.status(403).json({ error: 'No autorizado para eliminar este personaje' });
+    }
+
+    await Character.findByIdAndDelete(id);
     res.json({ message: 'Personaje eliminado correctamente' });
   } catch (error) {
     res.status(500).json({ error: 'Error al eliminar el personaje' });
@@ -329,27 +356,6 @@ router.post(
     }
   },
 );
-
-// Ruta para obtener las partidas de un usuario
-router.get('/my-games', authenticateUser, async (req, res) => {
-  try {
-    const userId = req.user._id;
-
-    // Buscar partidas donde el usuario sea jugador o DM
-    const games = await Game.find({
-      $or: [{ dmId: userId }, { 'players.userId': userId }],
-    })
-      .populate('dmId', 'name picture')
-      .populate('players.userId', 'name picture');
-
-    res.json(games);
-  } catch (error) {
-    console.error('Error al obtener las partidas del usuario:', error);
-    res
-      .status(500)
-      .json({ error: 'Error al obtener las partidas del usuario' });
-  }
-});
 
 // Endpoint para dejar una partida
 router.post('/leave/:gameId', authenticateUser, async (req, res) => {

@@ -15,7 +15,7 @@ export default function createNPCRoutes(io) {
   router.get('/templates', authenticateUser, async (req, res) => {
     try {
       const templates = await NPCTemplate.find({
-        $or: [{ isGlobal: true }, { createdBy: req.user.uid }],
+        $or: [{ isGlobal: true }, { createdBy: req.user._id.toString() }],
       }).sort({ npcType: 1, name: 1 });
 
       res.json(templates);
@@ -30,7 +30,7 @@ export default function createNPCRoutes(io) {
     try {
       const templateData = {
         ...req.body,
-        createdBy: req.user.uid,
+        createdBy: req.user._id.toString(),
         isGlobal: false, // Las plantillas creadas por usuarios no son globales
       };
 
@@ -55,7 +55,7 @@ export default function createNPCRoutes(io) {
 
       // Solo puede editar el creador o si es global (admin)
       if (
-        template.createdBy?.toString() !== req.user.uid &&
+        template.createdBy?.toString() !== req.user._id.toString() &&
         !template.isGlobal
       ) {
         return res.status(403).json({ message: 'No autorizado' });
@@ -81,7 +81,7 @@ export default function createNPCRoutes(io) {
       }
 
       // Solo puede eliminar el creador
-      if (template.createdBy?.toString() !== req.user.uid) {
+      if (template.createdBy?.toString() !== req.user._id.toString()) {
         return res.status(403).json({ message: 'No autorizado' });
       }
 
@@ -115,7 +115,7 @@ export default function createNPCRoutes(io) {
         isNPC: true,
         gameId,
         // Si el usuario tiene _id (Mongo), usarlo; si no, usar googleId
-        playerId: req.user._id || req.user.uid || req.user.googleId,
+        playerId: req.user._id,
         validated: true, // NPCs están validados automáticamente
       };
 
@@ -184,8 +184,8 @@ export default function createNPCRoutes(io) {
         return res.status(404).json({ message: 'Partida no encontrada' });
       }
 
-      const isPlayer = game.players.some((p) => p.odId === req.user.uid);
-      const isDM = game.dmId === req.user.uid;
+      const isPlayer = game.players.some((p) => p.userId.toString() === req.user._id.toString());
+      const isDM = game.dmId.toString() === req.user._id.toString();
 
       if (!isDM && !isPlayer) {
         return res.status(403).json({ message: 'No autorizado' });

@@ -3,7 +3,7 @@ import { Character } from '../models/Character.js';
 import { Game } from '../models/Game.js';
 import { User } from '../models/User.js';
 import { TurnOrchestrator } from '../utils/TurnOrchestrator.js';
-import { assignXPToCharacter, getXPProgress } from '../utils/xpSystem.js';
+import { assignXPToCharacter, calculateXPForLevel, getXPProgress } from '../utils/xpSystem.js';
 import { setupItemSocket } from './modules/itemSocket.js';
 import { socketRateLimiter } from './socketRateLimiter.js';
 
@@ -939,8 +939,12 @@ export const setupGameSockets = (io) => {
       async ({ targets, damage, damageType, gameId }) => {
         const updates = [];
 
+        // Una sola query para obtener todos los personajes objetivo
+        const characters = await Character.find({ _id: { $in: targets } });
+        const characterMap = new Map(characters.map(c => [c._id.toString(), c]));
+
         for (const characterId of targets) {
-          const character = await Character.findById(characterId);
+          const character = characterMap.get(characterId.toString());
           if (!character) continue;
 
           const oldHp = character.stats.hp;
@@ -970,6 +974,7 @@ export const setupGameSockets = (io) => {
             damageType,
             hpChange: newHp - oldHp,
             koWarning: character.koWarning,
+            playerId: character.playerId,
           });
         }
 
@@ -980,9 +985,8 @@ export const setupGameSockets = (io) => {
 
         // También emitir al canal personal de cada personaje afectado
         for (const update of updates) {
-          const character = await Character.findById(update.characterId);
-          if (character) {
-            io.to(`user:${character.playerId}`).emit('damage-applied', {
+          if (update.playerId) {
+            io.to(`user:${update.playerId}`).emit('damage-applied', {
               updates: [update],
               updatedBy: 'dm',
             });
@@ -1673,7 +1677,7 @@ export const setupGameSockets = (io) => {
           return;
         }
         const { baseXP, exponent } = game;
-        const nextLevelXP = require('../utils/xpSystem.js').calculateXPForLevel(
+        const nextLevelXP = calculateXPForLevel(
           character.level + 1,
           baseXP,
           exponent,

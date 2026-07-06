@@ -6,23 +6,9 @@ import { User } from '../models/User.js';
 
 const router = express.Router();
 
-// Ruta de ejemplo para autenticación
-router.post('/login', (req, res) => {
-  const { username, password } = req.body;
-
-  // Lógica de autenticación aquí
-  if (username === 'admin' && password === 'password') {
-    res.json({ message: 'Inicio de sesión exitoso', token: 'fake-jwt-token' });
-  } else {
-    res.status(401).json({ message: 'Credenciales inválidas' });
-  }
-});
-
 // Ruta para autenticación con Google
 router.post('/google', async (req, res) => {
   const { token } = req.body;
-
-  console.log('Token recibido del cliente:', token);
 
   try {
     // Verificar el token con Firebase Admin
